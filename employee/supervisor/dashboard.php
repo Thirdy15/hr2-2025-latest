@@ -1,14 +1,14 @@
 <?php
 session_start();
-if (!isset($_SESSION['e_id'])) {
-    header("Location: ../../login.php"); // Redirect to login if not logged in
+if (!isset($_SESSION['e_id']) || !isset($_SESSION['position']) || $_SESSION['position'] !== 'Supervisor') {
+    header("Location: ../../login.php");
     exit();
 }
 
 include '../../db/db_conn.php';
 
 $employeeId = $_SESSION['e_id'];
-
+$employeePosition = $_SESSION['position'];
 // Fetch the average of the employee's evaluations
 $sql = "SELECT 
             AVG(quality) AS avg_quality, 
@@ -50,29 +50,6 @@ $stmt->execute();
 $result = $stmt->get_result();
 $employeeInfo = $result->fetch_assoc();
 $stmt->close();
-
-// Fetch notifications
-function fetchNotifications($conn, $userId) {
-    $sql = "SELECT ln.message, er.firstname, er.lastname 
-            FROM leave_notifications ln
-            JOIN employee_register er ON ln.user_id = er.e_id
-            WHERE ln.user_id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $notifications = [];
-    while ($row = $result->fetch_assoc()) {
-        $notifications[] = $row;
-    }
-
-    $stmt->close();
-    return $notifications;
-}
-
-$notifications = fetchNotifications($conn, $employeeId);
-
 $conn->close();
 
 // Set the profile picture, default if not provided
@@ -136,10 +113,7 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
     transition: filter 0.3s ease;
   }
     </style>
-
-
 </head>
-
 <body class="sb-nav-fixed bg-black">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark border-bottom border-1 border-secondary">
         <a class="navbar-brand ps-3 text-muted" href="../../employee/supervisor/dashboard.php">Employee Portal</a>
@@ -170,16 +144,6 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                     <ul id="searchResults" class="dropdown-menu list-group mt-2 bg-transparent" style="width: 100%;"></ul>
                 </form>
             </div>
-            <!-- Notification Bell -->
-            <div class="ms-3 dropdown">
-                <button class="btn btn-outline-secondary btn-sm text-light" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-bell"></i>
-                    <span class="badge bg-danger" id="notificationCount">0</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown" id="notificationList">
-                    <!-- Notifications will be dynamically added here -->
-                </ul>
-            </div>
         </div>
     </nav>
     <div id="layoutSidenav">
@@ -197,7 +161,7 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                                         class="rounded-circle border border-light" width="120" height="120" alt="" />
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <li><a class="dropdown-item loading" href="../../employee/supervisor/profile.php">Profile</a></li>
+                                    <li><a class="dropdown-item" href="../../employee/supervisor/profile.php">Profile</a></li>
                                     <li><a class="dropdown-item" href="#!">Settings</a></li>
                                     <li><a class="dropdown-item" href="#!">Activity Log</a></li>
                                     <li><hr class="dropdown-divider" /></li>
@@ -214,7 +178,7 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                             </li>
                         </ul>
                         <div class="sb-sidenav-menu-heading text-center text-muted border-top border-1 border-secondary mt-3">Employee Dashboard</div>
-                        <a class="nav-link text-light loading" href="../../employee/supervisor/dashboard.php">
+                        <a class="nav-link text-light" href="../../employee/supervisor/dashboard.php">
                             <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
                             Dashboard
                         </a>           
@@ -225,8 +189,8 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                         </a>
                         <div class="collapse" id="collapseTAD" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../../employee/supervisor/attendance.php">Attendance Scanner</a>
-                                <a class="nav-link text-light loading " href="">View Attendance Record</a>
+                                <a class="nav-link text-light" href="../../employee/supervisor/attendance.php">Attendance Scanner</a>
+                                <a class="nav-link text-light" href="">View Attendance Record</a>
                             </nav>
                         </div>
                         <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLM" aria-expanded="false" aria-controls="collapseLM">
@@ -236,8 +200,8 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                         </a>
                         <div class="collapse" id="collapseLM" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../../employee/supervisor/leave_file.php">File Leave</a>
-                                <a class="nav-link text-light loading" href="../../employee/supervisor/leave_request.php">Leave Request</a>
+                                <a class="nav-link text-light" href="../../employee/supervisor/leave_file.php">File Leave</a>
+                                <a class="nav-link text-light" href="../../employee/supervisor/leave_request.php">Leave Request</a>
                             </nav>
                         </div>
                         <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePM" aria-expanded="false" aria-controls="collapsePM">
@@ -247,9 +211,9 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                         </a>
                         <div class="collapse" id="collapsePM" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../../employee/supervisor/kpi.php">Performance</a>
-                                <a class="nav-link text-light loading" href="../../employee/supervisor/evaluation.php">Evaluation Ratings</a>
-                                <a class="nav-link text-light loading" href="../../employee/supervisor/evaluation.php">Evaluation</a>
+                                <a class="nav-link text-light" href="../../employee/supervisor/kpi.php">Performance</a>
+                                <a class="nav-link text-light" href="../../employee/supervisor/evaluation.php">Evaluation Ratings</a>
+                                <a class="nav-link text-light" href="../../employee/supervisor/evaluation.php">Evaluation</a>
                             </nav>
                         </div>
                         <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseSR" aria-expanded="false" aria-controls="collapseSR">
@@ -259,7 +223,8 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                         </a>
                         <div class="collapse" id="collapseSR" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../../employee/supervisor/awardee.php">Awardee</a>
+                                <a class="nav-link text-light" href="../../employee/supervisor/awardee.php">Awardee</a>
+                                <a class="nav-link text-light" href="../../employee/supervisor/recognition.php">View Your Rating</a>
                             </nav>
                         </div> 
                         <div class="sb-sidenav-menu-heading text-center text-muted border-top border-1 border-secondary mt-3">Feedback</div> 
@@ -288,16 +253,11 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                             <div class="col">
                                 <h1 class="mb-4 text-light">Dashboard</h1>
                             </div>
-                            <div class="col-auto">
-                                <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#todoModal" title="To-Do List" style="font-size: 20px; width: 40px; height: 40px;">
-                                    <i class="fas fa-tasks"></i>
-                                </button>
-                            </div>
                         </div>
                     </div>
                     <div class="container" id="calendarContainer" 
-                         style="position: fixed; top: 9%; right: 0; z-index: 1050; 
-                        width: 700px; height: 300px; display: none;">
+                         style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050; 
+                        width: 80%; height: 80%; display: none;">
                         <div class="row">
                             <div class="col-md-12">
                                 <div id="calendar" class="p-2"></div>
@@ -311,10 +271,10 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                                     <h3>Attendance</h3> <!-- Month and Year display -->
                                 </div>
                                 <div class="card-body overflow-auto" style="max-height: 400px;">
-                                    <div class="d-flex justify-content-between align-items-start mb-4">
+                                    <div class="d-flex justify-content-between align-items-start mb-0">
                                         <div>
                                             <h5 class="fw-bold">Today's Date:</h5>
-                                            <a href="../../employee/supervisor/dashboard.php" id="todaysDate" class="cursor-pointer">
+                                            <a href="../../employee/supervisor/dashboard.php" id="todaysDate" class="cursor-pointer text-decoration-none">
                                                 <span id="todaysDateContent"></span>
                                             </a>
                                         </div>
@@ -322,6 +282,10 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                                             <h5 class="fw-bold">Time in:</h5>
                                             <p class="text-warning">08:11 AM</p>
                                         </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="dateFilter" class="form-label">Filter by Date:</label>
+                                        <input type="date" class="form-control" id="dateFilter">
                                     </div>
                                     <hr>
                                     <div class="mb-0">
@@ -696,73 +660,6 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
                         </div>
                     </div>
                 </div>
-                <div class="modal fade" id="todoModal" tabindex="-1" aria-labelledby="todoModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content bg-dark text-light">
-                            <div class="modal-header">
-                                <h5 class="modal-title text-info" id="todoModalLabel">To Do</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="d-flex justify-content-end">
-                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTaskModal">
-                                        <i class="fas fa-plus me-2"></i>Add To Do List
-                                    </button>
-                                </div>
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item bg-dark text-light fs-4 border-0 d-flex justify-content-between align-items-center">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="" id="task1">
-                                            <label class="form-check-label" for="task1">
-                                                <i class="bi bi-check-circle text-warning me-2"></i>Facial Recognition
-                                            </label>
-                                        </div>
-                                    </li>
-                                    <li class="list-group-item bg-dark text-light fs-4 border-0 d-flex justify-content-between align-items-center">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="" id="task2">
-                                            <label class="form-check-label" for="task2">
-                                                <i class="bi bi-check-circle text-warning me-2"></i>Attendance Record
-                                            </label>
-                                        </div>
-                                    </li>
-                                    <li class="list-group-item bg-dark text-light fs-4 border-0 d-flex justify-content-between align-items-center">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="" id="task3">
-                                            <label class="form-check-label" for="task3">
-                                                <i class="bi bi-check-circle text-warning me-2"></i>Leave Processing
-                                            </label>
-                                        </div>
-                                    </li>
-                                    <li class="list-group-item bg-dark text-light fs-4 border-0 d-flex justify-content-between align-items-center">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="" id="task4">
-                                            <label class="form-check-label" for="task4">
-                                                <i class="bi bi-check-circle text-warning me-2"></i>Performance Processing
-                                            </label>
-                                        </div>
-                                    </li>
-                                    <li class="list-group-item bg-dark text-light fs-4 border-0 d-flex justify-content-between align-items-center">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="" id="task5">
-                                            <label class="form-check-label" for="task5">
-                                                <i class="bi bi-check-circle text-warning me-2"></i>Payroll Processing
-                                            </label>
-                                        </div>
-                                    </li>
-                                    <li class="list-group-item bg-dark text-light fs-4 border-0 d-flex justify-content-between align-items-center">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="" id="task6">
-                                            <label class="form-check-label" for="task6">
-                                                <i class="bi bi-check-circle text-warning me-2"></i>Social Recognition
-                                            </label>
-                                        </div>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             <footer class="py-4 bg-light mt-auto bg-dark border-top border-1 border-secondary">
                 <div class="container-fluid px-4">
                     <div class="d-flex align-items-center justify-content-between small">
@@ -777,66 +674,8 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
             </footer>
         </div>
     </div>
-    <div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content bg-transparent border-0">
-                    <div class="modal-body d-flex flex-column align-items-center justify-content-center">
-                            <!-- Bouncing coin spinner -->
-                            <div class="coin-spinner"></div>
-                            <div class="mt-3 text-light fw-bold">Please wait...</div>
-                        </div>
-                    </div>
-                </div>
-           </div>
-        </div>                                                
-  <script>
-      document.addEventListener('DOMContentLoaded', function () {
-                const buttons = document.querySelectorAll('.loading');
-                const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
 
-                // Loop through each button and add a click event listener
-                buttons.forEach(button => {
-                    button.addEventListener('click', function (event) {
-                        // Show the loading modal
-                        loadingModal.show();
-
-                        // Disable the button to prevent multiple clicks
-                        this.classList.add('disabled');
-
-                        // Handle form submission buttons
-                        if (this.closest('form')) {
-                            event.preventDefault(); // Prevent the default form submit
-
-                            // Submit the form after a short delay
-                            setTimeout(() => {
-                                this.closest('form').submit();
-                            }, 1500);
-                        }
-                        // Handle links
-                        else if (this.tagName.toLowerCase() === 'a') {
-                            event.preventDefault(); // Prevent the default link behavior
-
-                            // Redirect after a short delay
-                            setTimeout(() => {
-                                window.location.href = this.href;
-                            }, 1500);
-                        }
-                    });
-                });
-
-                // Hide the loading modal when navigating back and enable buttons again
-                window.addEventListener('pageshow', function (event) {
-                    if (event.persisted) { // Check if the page was loaded from cache (back button)
-                        loadingModal.hide();
-
-                        // Re-enable all buttons when coming back
-                        buttons.forEach(button => {
-                            button.classList.remove('disabled');
-                        });
-                        
-                    }
-                });
-            });
+<script>
     // for calendar only
     let calendar; // Declare calendar variable globally
 
@@ -926,17 +765,17 @@ $profilePicture = !empty($employeeInfo['pfp']) ? $employeeInfo['pfp'] : '../../i
 let currentMonth = new Date().getMonth(); // January is 0, December is 11
 let currentYear = new Date().getFullYear();
 let employeeId = <?php echo $employeeId; ?>; // Employee ID from PHP session
+let filteredDay = null; // Track the filtered day
 
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-// Define operation hours: Start at 8:00 AM and End at 4:00 PM
 const operationStartTime = new Date();
-operationStartTime.setHours(8, 0, 0, 0); // 8:00 AM
+operationStartTime.setHours(8, 10, 0, 0);
 
 const operationEndTime = new Date();
-operationEndTime.setHours(16, 0, 0, 0); // 4:00 PM
+operationEndTime.setHours(16, 0, 0, 0);
 
-// Function to format the time in 12-hour format (with AM/PM)
+// Function to format time with AM/PM
 function formatTimeWithAmPm(time24) {
     if (!time24 || time24 === 'N/A') {
         return 'No data';  // Handle cases where there's no data
@@ -945,18 +784,12 @@ function formatTimeWithAmPm(time24) {
     // Split time into hours and minutes
     let [hour, minute] = time24.split(':');
     hour = parseInt(hour); // Convert hour to an integer
-
-    // Determine AM or PM suffix
     const amPm = hour >= 12 ? 'PM' : 'AM';
-    
-    // Convert 24-hour time to 12-hour time
     hour = hour % 12 || 12; // Convert 0 to 12 for midnight (12 AM)
-
-    // Return formatted time with AM/PM
     return `${hour}:${minute} ${amPm}`;
 }
 
-// Function to calculate status (Late or Overtime)
+// Function to calculate attendance status
 function calculateAttendanceStatus(timeIn, timeOut) {
     let status = '';
 
@@ -998,9 +831,13 @@ function renderCalendar(month, year, attendanceRecords = {}) {
     for (let i = firstDay; i < 7; i++) {
         const status = (i === 0) ? 'Day Off' : attendanceRecords[dayCounter] || ''; // Set "Day Off" for Sundays (day 0)
         
+        // Add a border if this is the filtered day
+        const isFilteredDay = filteredDay && filteredDay.getDate() === dayCounter && filteredDay.getMonth() === month && filteredDay.getFullYear() === year;
+        const borderClass = isFilteredDay ? 'border border-2 border-light' : '';
+
         calendarHTML += `
             <div class="col">
-                <button class="btn text-light p-0" data-bs-toggle="modal" data-bs-target="#attendanceModal" onclick="showAttendanceDetails(${dayCounter})">
+                <button class="btn text-light p-0 ${borderClass}" data-bs-toggle="modal" data-bs-target="#attendanceModal" onclick="showAttendanceDetails(${dayCounter})">
                     <span class="fw-bold ${status === 'Present' ? 'text-success' : status === 'Absent' ? 'text-danger' : status === 'Late' ? 'text-warning' : status === 'Day Off' ? 'text-muted' : ''}">
                         ${dayCounter}
                     </span>
@@ -1019,9 +856,13 @@ function renderCalendar(month, year, attendanceRecords = {}) {
         for (let i = 0; i < 7 && dayCounter <= daysInMonth; i++) {
             const status = (dayOfWeek === 0) ? 'Day Off' : attendanceRecords[dayCounter] || ''; 
             
+            // Add a border if this is the filtered day
+            const isFilteredDay = filteredDay && filteredDay.getDate() === dayCounter && filteredDay.getMonth() === month && filteredDay.getFullYear() === year;
+            const borderClass = isFilteredDay ? 'border border-2 border-light' : '';
+
             calendarHTML += `
                 <div class="col">
-                    <button class="btn text-light p-0" data-bs-toggle="modal" data-bs-target="#attendanceModal" onclick="showAttendanceDetails(${dayCounter})">
+                    <button class="btn text-light p-0 ${borderClass}" data-bs-toggle="modal" data-bs-target="#attendanceModal" onclick="showAttendanceDetails(${dayCounter})">
                         <span class="fw-bold ${status === 'Present' ? 'text-success' : status === 'Absent' ? 'text-danger' : status === 'Late' ? 'text-warning' : status === 'Day Off' ? 'text-muted' : ''}">
                             ${dayCounter}
                         </span>
@@ -1094,6 +935,9 @@ function showAttendanceDetails(day) {
             } else if (attendanceStatus === 'On Time') {
                 statusElement.classList.add('text-success');
                 statusElement.classList.remove('text-warning', 'text-danger', 'text-muted');
+            } else if (attendanceStatus === 'Absent') {
+                statusElement.classList.add('text-success');
+                statusElement.classList.remove('text-warning', 'text-danger', 'text-muted');
             } else {
                 statusElement.classList.add('text-muted');
                 statusElement.classList.remove('text-success', 'text-danger', 'text-warning');
@@ -1121,9 +965,17 @@ document.getElementById('prevMonthBtn').addEventListener('click', function() {
     fetchAttendance(currentMonth, currentYear);
 });
 
+// Date filter functionality
+document.getElementById('dateFilter').addEventListener('change', function () {
+    const selectedDate = new Date(this.value); // Get the selected date
+    currentMonth = selectedDate.getMonth(); // Update the current month
+    currentYear = selectedDate.getFullYear(); // Update the current year
+    filteredDay = selectedDate; // Track the filtered day
+    fetchAttendance(currentMonth, currentYear); // Fetch and render the calendar for the selected month and year
+});
+
 // Fetch the initial calendar for the current month and year
 fetchAttendance(currentMonth, currentYear);
-
 
 
 // GENERAL SEARCH
@@ -1179,45 +1031,6 @@ searchInputElement.addEventListener('hidden.bs.collapse', function () {
 });
 
 
-
-// BLUR MODAL
-const todoModal = document.getElementById('todoModal');
-  const mainContent = document.getElementById('main-content');
-
-  todoModal.addEventListener('show.bs.modal', function () {
-    mainContent.classList.add('blur-background');
-  });
-
-  todoModal.addEventListener('hidden.bs.modal', function () {
-    mainContent.classList.remove('blur-background');
-  });
-
-    // Fetch notifications using JavaScript and fetch API
-    function fetchNotifications() {
-        const notifications = <?php echo json_encode($notifications); ?>;
-        const notificationList = document.getElementById('notificationList');
-        const notificationCount = document.getElementById('notificationCount');
-        notificationList.innerHTML = ''; // Clear existing notifications
-
-        if (notifications.length > 0) {
-            notifications.forEach(notification => {
-                const listItem = document.createElement('li');
-                listItem.classList.add('dropdown-item');
-                listItem.innerHTML = `<strong>${notification.firstname} ${notification.lastname}:</strong> ${notification.message}`;
-                notificationList.appendChild(listItem);
-            });
-            notificationCount.textContent = notifications.length;
-        } else {
-            const listItem = document.createElement('li');
-            listItem.classList.add('dropdown-item');
-            listItem.textContent = 'No notifications found';
-            notificationList.appendChild(listItem);
-            notificationCount.textContent = 0;
-        }
-    }
-
-    // Call fetchNotifications on page load
-    document.addEventListener('DOMContentLoaded', fetchNotifications);
 </script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'> </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

@@ -37,7 +37,7 @@
                     <div class="row justify-content-around align-items-center">
                         <div class="col-lg-5">
                             <div class="card shadow-lg border-0 rounded-lg mt-5 my-5 bg-dark">
-                                <div class="card-header border-bottom border-1 border-secondary">
+                                <div class="card-header border-bottom border-1 border-warning">
                                     <h3 class="text-center text-light font-weight-light my-4">Create Employee Account</h3>
                                     <div id="form-feedback" class="alert text-center" style="display: none;"></div>
                                 </div>
@@ -142,7 +142,7 @@
                                         </div>
                                     </form>
                                 </div>
-                                <div class="card-footer text-center border-top border-1 border-secondary">
+                                <div class="card-footer text-center border-top border-1 border-warning">
                                     <p class="small text-center text-muted mt-1">Human Resource 2</p>
                                 </div>
                             </div>
@@ -175,7 +175,7 @@
             </main>
         </div>       
         <div id="layoutAuthentication_footer">
-            <footer class="py-4 bg-dark text-light mt-auto border-1 border-secondary border-top">
+            <footer class="py-4 bg-dark text-light mt-auto border-1 border-warning border-top">
                 <div class="container-fluid px-4">
                     <div class="d-flex align-items-center justify-content-between small">
                         <div class="text-muted">Copyright &copy; Your Website 2023</div>
@@ -331,12 +331,12 @@ document.getElementById('captureFaceBtn').addEventListener('click', () => {
 
 
         const positionsByDepartment = {
-            "Finance Department": ["Financial Controller", "Accountant", "Credit Analyst", "Supervisor", "Staff", "Field Worker", "Contractual"],
-            "Administration Department": ["Facilities Manager", "Operations Manager", "Customer Service Representative", "Supervisor", "Staff", "Field Worker", "Contractual"],
-            "Sales Department": ["Sales Manager", "Sales Representative", "Marketing Coordinator", "Supervisor", "Staff", "Field Worker", "Contractual"],
-            "Credit Department": ["Loan Officer", "Loan Collection Officer", "Credit Risk Analyst", "Supervisor", "Staff", "Field Worker", "Contractual"],
-            "Human Resource Department": ["HR Manager", "Recruitment Specialists", "Training Coordinator", "Supervisor", "Staff", "Field Worker", "Contractual"],
-            "IT Department": ["IT Manager", "Network Administrator", "System Administrator", "IT Support Specialist", "Supervisor", "Staff", "Field Worker", "Contractual"]
+            "Finance Department": ["Financial Controller", "Accountant", "Credit Analyst", "Supervisor", "Staff"],
+            "Administration Department": ["Facilities Manager", "Operations Manager", "Customer Service Representative", "Supervisor", "Staff"],
+            "Sales Department": ["Sales Manager", "Sales Representative", "Marketing Coordinator", "Supervisor", "Staff"],
+            "Credit Department": ["Loan Officer", "Loan Collection Officer", "Credit Risk Analyst", "Supervisor", "Staff"],
+            "Human Resource Department": ["HR Manager", "Recruitment Specialists", "Training Coordinator", "Supervisor", "Staff"],
+            "IT Department": ["IT Manager", "Network Administrator", "System Administrator", "IT Support Specialist", "Supervisor", "Staff"]
         };
 
         function filterPositions() {
@@ -360,6 +360,37 @@ document.getElementById('captureFaceBtn').addEventListener('click', () => {
 
         // Attach event listener to department dropdown
         document.getElementById("inputDepartment").addEventListener("change", filterPositions);
+
+    // Function to show notification
+    function showNotification(message, type) {
+        const formFeedback = document.getElementById('form-feedback');
+        formFeedback.style.display = 'block';
+        formFeedback.className = `alert alert-${type}`;
+        formFeedback.innerText = message;
+    }
+
+    // Function to notify admin
+    async function notifyAdmin() {
+        try {
+            const response = await fetch('../db/notify_admin.php', {
+                method: 'POST',
+                body: JSON.stringify({ message: 'A new employee account has been created.' }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+            if (!result.success) {
+                console.error('Failed to notify admin:', result.message);
+            }
+        } catch (error) {
+            console.error('An error occurred while notifying the admin:', error);
+        }
+    }
+
+    // Attach event listener to form
+    document.getElementById('registrationForm').addEventListener('submit', handleFormSubmit);
     </script>
 </body>
 

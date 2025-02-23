@@ -5,19 +5,24 @@ date_default_timezone_set('Asia/Manila'); // Set the time zone to Philippine tim
 
 include '../../db/db_conn.php';
 
-// Check if necessary parameters are provided for a specific day or entire month
+// Check if necessary parameters are provided
 if (!isset($_GET['e_id'], $_GET['month'], $_GET['year'])) {
     echo json_encode(['error' => 'Missing parameters']);
     exit;
 }
 
-$employee_id = $_GET['e_id'];
-$month = $_GET['month'];
-$year = $_GET['year'];
+$employee_id = intval($_GET['e_id']);
+$month = intval($_GET['month']);
+$year = intval($_GET['year']);
 
-// If 'day' parameter is provided, we are fetching attendance for a specific day
+// Get the total number of days in the requested month
+$totalDaysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+
+$attendanceRecords = array_fill(1, $totalDaysInMonth, 'Absent'); // Fill array with 'Absent' for all days
+
+// If 'day' parameter is provided, fetch attendance for a specific day
 if (isset($_GET['day'])) {
-    $day = $_GET['day'];
+    $day = intval($_GET['day']);
 
     // Prepare and execute the query to get attendance details for the given day
     $sql = "SELECT time_in, time_out FROM attendance_log WHERE e_id = ? AND DAY(attendance_date) = ? AND MONTH(attendance_date) = ? AND YEAR(attendance_date) = ?";
@@ -48,8 +53,7 @@ if (isset($_GET['day'])) {
 
     $stmt->close();
 } else {
-    // Otherwise, we are fetching attendance for the entire month
-    // Prepare and execute query for the entire month
+    // Fetch attendance for the entire month
     $sql = "SELECT DAY(attendance_date) AS day, time_in, time_out FROM attendance_log WHERE e_id = ? AND MONTH(attendance_date) = ? AND YEAR(attendance_date) = ?";
     $stmt = $conn->prepare($sql);
 
@@ -62,7 +66,7 @@ if (isset($_GET['day'])) {
     $stmt->execute();
     $result = $stmt->get_result();
 
-    $attendanceRecords = [];
+    // Update attendanceRecords based on existing data
     while ($row = $result->fetch_assoc()) {
         $day = (int)$row['day'];
 
@@ -71,17 +75,13 @@ if (isset($_GET['day'])) {
             $attendanceRecords[$day] = 'Absent';
         } else {
             // Check if the employee is "Late" based on time_in (Example: 9:00 AM)
-            $timeThreshold = '09:00:00';
+            $timeThreshold = '08:10:00';
             $status = ($row['time_in'] > $timeThreshold) ? 'Late' : 'Present';
             $attendanceRecords[$day] = $status;
         }
     }
 
-    if (empty($attendanceRecords)) {
-        echo json_encode(['message' => 'No attendance records found for the given month']);
-    } else {
-        echo json_encode($attendanceRecords);
-    }
+    echo json_encode($attendanceRecords);
 
     $stmt->close();
 }

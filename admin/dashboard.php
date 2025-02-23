@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION['a_id'])) {
-    header("Location: ../login.php");
+    header("Location: ../admin/login.php");
     exit();
 }
 
@@ -27,6 +27,9 @@ $adminInfo = $result->fetch_assoc();
 
 // Set profile picture or use default if not set
 $profilePicture = !empty($adminInfo['pfp']) ? $adminInfo['pfp'] : '../img/defaultpfp.jpg';
+
+// Close statement and connection
+$stmt->close();
 
 // Fetch notifications
 $sql = "SELECT id, message, created_at, is_read FROM notifications ORDER BY created_at DESC";
@@ -57,7 +60,6 @@ usort($notifications, function($a, $b) {
 
 $conn->close();
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -136,36 +138,35 @@ $conn->close();
     }
 </style>
 </head>
-
+        
 <body class="sb-nav-fixed bg-black">
     <nav class="sb-topnav navbar navbar-expand navbar-dark border-bottom border-1 border-secondary bg-dark">
         <a class="navbar-brand ps-3 text-muted" href="../admin/dashboard.php">Admin Portal</a>
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" href="#!"><i class="fas fa-bars text-light"></i></button>
-    
-    <!-- Flex container to hold both time/date and search form -->
+            
+        <!-- Flex container to hold both time/date and search form -->
         <div class="d-flex ms-auto me-0 me-md-3 my-2 my-md-0 align-items-center">
             <div class="text-light me-3 p-2 rounded shadow-sm bg-gradient" id="currentTimeContainer" 
                 style="background: linear-gradient(45deg, #333333, #444444); border-radius: 5px;">
-                    <span class="d-flex align-items-center">
-                        <span class="pe-2">
-                            <i class="fas fa-clock"></i> 
+                <span class="d-flex align-items-center">
+                    <span class="pe-2">
+                        <i class="fas fa-clock"></i> 
                         <span id="currentTime">00:00:00</span>
                     </span>
                     <button class="btn btn-outline-warning btn-sm ms-2" type="button" onclick="toggleCalendar()">
                         <i class="fas fa-calendar-alt"></i>
                         <span id="currentDate">00/00/0000</span>
                     </button>
-                    </span>
+                </span>
             </div>
-
             
-
             <form class="d-none d-md-inline-block form-inline">
-            <div class="input-group">
-                <input class="form-control" type="text" placeholder="Search for..." aria-label="Search for..." aria-describedby="btnNavbarSearch" />
-                <button class="btn btn-warning" id="btnNavbarSearch" type="button"><i class="fas fa-search"></i></button>
-            </div>
+                <div class="input-group">
+                    <input class="form-control" type="text" placeholder="Search for..." aria-label="Search for..." aria-describedby="btnNavbarSearch" />
+                    <button class="btn btn-warning" id="btnNavbarSearch" type="button"><i class="fas fa-search"></i></button>
+                </div>
             </form>
+            
             <!-- Notifications Bell -->
             <div class="ms-3 dropdown me-3">
                 <button class="btn btn-outline-light btn-sm position-relative" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -201,6 +202,7 @@ $conn->close();
                 </ul>
             </div>
         </div>
+        
     </nav>
     <div id="layoutSidenav">
         <div id="layoutSidenav_nav">
@@ -224,6 +226,7 @@ $conn->close();
                                     <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">Logout</a></li>
                                 </ul>
                             </li>
+                            
                             <li class="nav-item text-light d-flex ms-3 flex-column align-items-center text-center">
                                 <span class="big text-light mb-1">
                                     <?php
@@ -270,7 +273,6 @@ $conn->close();
                             <nav class="sb-sidenav-menu-nested nav">
                                 <a class="nav-link text-light loading" href="../admin/leave_requests.php">Leave Requests</a>
                                 <a class="nav-link text-light loading" href="../admin/leave_history.php">Leave History</a>
-                                <a class="nav-link text-light loading"  href="../admin/leave_allocation.php">Set Leave</a>
                             </nav>
                         </div>
                         <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePM" aria-expanded="false" aria-controls="collapsePM">
@@ -290,7 +292,7 @@ $conn->close();
                         </a>
                         <div class="collapse" id="collapseSR" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                             <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../../admin/awardee.php">Awardee</a>
+                                <a class="nav-link text-light loading" href="../admin/awardee.php">Awardee</a>
                                 <a class="nav-link text-light loading" href="../admin/recognition.php">Generate Certificate</a>
                             </nav>
                         </div>
@@ -329,23 +331,81 @@ $conn->close();
                                 </div>
                             </div>
                         </div>
-                <!-- Leave Request Status Section -->
-                        <div class="col-xl-3">
-                            <div class="card mb-4">
-                                <div class="card-header bg-dark text-light border-bottom border-1 border-secondary">
-                                    <i class="fas fa-chart-pie me-1"></i> 
-                                    <a class="text-light" href="../admin/leave_requests.php">Leave Request Status </a>
-                                </div>
-                                <div class="card-body bg-dark">
-                                    <canvas id="leaveStatusChart" width="300" height="300"></canvas>
+                <!-- Leave Request Status and Employee Performance Section -->
+                <div class="row">
+                    <div class="col-xl-6">
+                        <div class="card mb-4">
+                            <div class="card-header bg-dark text-light border-bottom border-1 border-secondary">
+                                <i class="fas fa-chart-pie me-1"></i> 
+                                <a class="text-light" href="../admin/leave_requests.php">Leave Request Status </a>
+                            </div>
+                            <div class="card-body bg-dark">
+                                <canvas id="leaveStatusChart" width="300" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6">
+                        <div class="card mb-4">
+                            <div class="card-header bg-dark text-light border-bottom border-1 border-secondary">
+                                <i class="fas fa-chart-line me-1"></i>
+                                <a class="text-light" href="#">Employee Performance</a>
+                            </div>
+                            <div class="card-body bg-dark">
+                                <canvas id="employeePerformanceChart" width="300" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Employee Count per Department Section -->
+                <div class="row">
+                    <div class="col-xl-12">
+                        <div class="card mb-4">
+                            <div class="card-header bg-dark text-light border-bottom border-1 border-secondary">
+                                <i class="fas fa-users me-1"></i>
+                                <a class="text-light" href="#">Employee Count per Department</a>
+                            </div>
+                            <div class="card-body bg-dark">
+                                <canvas id="employeeDepartmentChart" width="300" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Department Attendance Record Section -->
+                <div class="row">
+                    <div class="col-xl-12">
+                        <div class="card mb-4">
+                            <div class="card-header bg-dark text-light border-bottom border-1 border-secondary">
+                                <i class="fas fa-chart-bar me-1"></i>
+                                <a class="text-light" href="#">Department Attendance Record</a>
+                            </div>
+                            <div class="card-body bg-dark">
+                                <select class="department-select form-control mb-3" id="departmentSelect">
+                                    <option value="">Show All Departments</option>
+                                    <option value="hr">HR Department</option>
+                                    <option value="it">IT Department</option>
+                                    <option value="sales">Sales Department</option>
+                                    <option value="marketing">Marketing Department</option>
+                                </select>
+                                <div class="chart-container">
+                                    <canvas id="attendanceChart" width="500" height="150"></canvas>
                                 </div>
                             </div>
                         </div>
-                        
+                    </div>
+                </div>
+                <!-- Data Table Example Section -->
+                <div class="row">
+                    <div class="col-xl-12">
                         <div class="card mb-4 bg-dark text-light">
-                            <div class="card-header border-bottom border-1 border-secondary">
-                                <i class="fas fa-table me-1"></i>
-                                DataTable Example
+                            <div class="card-header border-bottom border-1 border-secondary d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-table me-1"></i>
+                                    DataTable Example
+                                </div>
+                                <div class="input-group input-group-sm" style="width: 200px;">
+                                    <input class="form-control" type="text" placeholder="Search..." aria-label="Search" aria-describedby="btnNavbarSearch" />
+                                    <button class="btn btn-warning" id="btnNavbarSearch" type="button"><i class="fas fa-search"></i></button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <table id="datatablesSimple" class="table text-light">
@@ -446,6 +506,8 @@ $conn->close();
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
                     <!-- for leaveStatusChart -->
                     <?php
 
@@ -470,6 +532,39 @@ $conn->close();
                     ?>
                 </div>
             </main>
+            <!-- All Notifications Modal -->
+            <!-- Notifications Modal -->
+<div class="modal fade" id="allNotificationsModal" tabindex="-1" aria-labelledby="allNotificationsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content custom-modal">
+            <div class="modal-header border-bottom border-dark">
+                <h5 class="modal-title" id="allNotificationsModalLabel">🔔 All Notifications</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body custom-body" id="allNotificationsModalBody">
+                <!-- All notifications will be loaded here -->
+                <ul class="list-group">
+                    <?php foreach ($notifications as $notification): ?>
+                        <li class="list-group-item custom-item <?php echo $notification['is_read'] ? 'read' : 'unread'; ?>">
+                            <span class="notif-icon">
+                                <?php if (!$notification['is_read']): ?>
+                                    🔴
+                                <?php else: ?>
+                                    ⚪
+                                <?php endif; ?>
+                            </span>
+                            <?php echo htmlspecialchars($notification['message']); ?>
+                            <span class="time-stamp">Just now</span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+            <div class="modal-footer border-top border-dark">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
                 <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content bg-dark text-light">
@@ -517,7 +612,7 @@ $conn->close();
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-  document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function () {
                 const buttons = document.querySelectorAll('.loading');
                 const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
 
@@ -672,7 +767,6 @@ document.addEventListener('click', function(event) {
     calendar.render();
     //console.log("Calendar initialized and rendered");
 
-
             function fetchLeaveData(date) {
                 fetch(`leave_data.php?date=${date}`)
                 .then(response => response.json())
@@ -748,40 +842,40 @@ setInterval(setCurrentTime, 1000);
             });
         });
 
-        // Function to mark a notification as read
-        function markAsRead(notificationId) {
-            fetch('../admin/mark_notification_read.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id: notificationId })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Reduce the notification count
-                    const notificationCountElement = document.getElementById('notificationCount');
-                    let notificationCount = parseInt(notificationCountElement.textContent);
-                    notificationCount -= 1;
-                    if (notificationCount > 0) {
-                        notificationCountElement.textContent = notificationCount;
-                    } else {
-                        notificationCountElement.remove();
-                    }
-                    // Mark the notification as read visually
-                    const notificationItem = document.querySelector(`a[data-id="${notificationId}"]`);
-                    notificationItem.classList.remove('font-weight-bold');
-                    notificationItem.querySelector('.badge').remove();
-                } else {
-                    showErrorModal('Failed to mark notification as read.');
-                }
-            })
-            .catch(error => {
-                console.error('Error marking notification as read:', error);
-                showErrorModal('An error occurred while marking notification as read.');
-            });
+        
+
+        // Function to hide reminder
+        function hideReminder() {
+            const reminderElement = document.getElementById('reminder');
+            if (reminderElement) {
+                reminderElement.style.display = 'none';
+            }
         }
+
+        // Function to show reminder
+        function showReminder() {
+            const reminderElement = document.getElementById('reminder');
+            if (reminderElement) {
+                reminderElement.style.display = 'block';
+            }
+        }
+
+        // Add event listeners to notification items
+        document.addEventListener('DOMContentLoaded', function () {
+            const notificationItems = document.querySelectorAll('.dropdown-item');
+            notificationItems.forEach(item => {
+                item.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    const notificationId = this.getAttribute('data-id');
+                    markAsRead(notificationId);
+                });
+            });
+
+            // Show reminder if there are unread notifications
+            if (document.querySelectorAll('.dropdown-item.font-weight-bold').length > 0) {
+                showReminder();
+            }
+        });
 
         // Function to clear all notifications
         function clearAllNotifications() {
@@ -844,9 +938,244 @@ setInterval(setCurrentTime, 1000);
                 });
             });
         });
+
+        // Dummy Data for Employee Performance
+        const employees = [
+            { name: "John Doe", loansDisbursed: 50, recoveryRate: 95, customerRating: 4.5 },
+            { name: "Jane Smith", loansDisbursed: 45, recoveryRate: 85, customerRating: 4.2 },
+            { name: "Alice Johnson", loansDisbursed: 60, recoveryRate: 90, customerRating: 4.7 },
+        ];
+
+        // Employee Performance Chart
+        const employeePerformanceCtx = document.getElementById("employeePerformanceChart").getContext("2d");
+        new Chart(employeePerformanceCtx, {
+            type: "bar",
+            data: {
+                labels: employees.map(emp => emp.name),
+                datasets: [{
+                    label: "Loans Disbursed",
+                    data: employees.map(emp => emp.loansDisbursed),
+                    backgroundColor: "#1abc9c", // Highlight color
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true },
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: "#4a5f78", // Grid color
+                        },
+                        ticks: {
+                            color: "#fff", // Y-axis text color
+                        },
+                    },
+                    x: {
+                        grid: {
+                            color: "#4a5f78", // Grid color
+                        },
+                        ticks: {
+                            color: "#fff", // X-axis text color
+                        },
+                    },
+                },
+            },
+        });
+
+        // Dummy Data for Employee Count per Department
+        const departments = [
+            { name: "Sales", count: 25 },
+            { name: "Marketing", count: 15 },
+            { name: "Finance", count: 10 },
+            { name: "HR", count: 8 },
+            { name: "IT", count: 20 },
+            { name: "Credit", count: 12 }, // Added Credit Department
+        ];
+
+        // Employee Count per Department Bar Chart
+        const employeeDepartmentCtx = document.getElementById("employeeDepartmentChart").getContext("2d");
+        new Chart(employeeDepartmentCtx, {
+            type: "bar",
+            data: {
+                labels: departments.map(dept => dept.name),
+                datasets: [{
+                    label: "Employee Count",
+                    data: departments.map(dept => dept.count),
+                    backgroundColor: "#1abc9c", // Bar color
+                    borderColor: "#34495e", // Border color
+                    borderWidth: 1,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false, // Hide legend for bar chart
+                    },
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            label: function (context) {
+                                const label = context.label || "";
+                                const value = context.raw || 0;
+                                return `${label}: ${value} employees`;
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: "#4a5f78", // Grid color
+                        },
+                        ticks: {
+                            color: "#fff", // Y-axis text color
+                        },
+                    },
+                    x: {
+                        grid: {
+                            color: "#4a5f78", // Grid color
+                        },
+                        ticks: {
+                            color: "#fff", // X-axis text color
+                        },
+                    },
+                },
+            },
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const ctx = document.getElementById('attendanceChart').getContext('2d');
+            const departmentSelect = document.getElementById('departmentSelect');
+
+            // Temporary data for departments and their employees' attendance
+            const departmentData = {
+                hr: {
+                    labels: ['John Doe', 'Jane Smith', 'Alice Johnson', 'Bob Brown'],
+                    attendance: ['Present', 'Absent', 'Present', 'Present'] // Attendance status
+                },
+                it: {
+                    labels: ['Mike Ross', 'Harvey Specter', 'Rachel Zane', 'Louis Litt'],
+                    attendance: ['Present', 'Present', 'Absent', 'Present']
+                },
+                sales: {
+                    labels: ['Tom Cruise', 'Emma Watson', 'Chris Evans', 'Scarlett Johansson'],
+                    attendance: ['Absent', 'Present', 'Present', 'Absent']
+                },
+                marketing: {
+                    labels: ['Tony Stark', 'Steve Rogers', 'Natasha Romanoff', 'Bruce Banner'],
+                    attendance: ['Present', 'Present', 'Present', 'Absent']
+                }
+            };
+
+            // Calculate total present and absent employees for each department
+            const departmentSummary = {
+                labels: ['HR', 'IT', 'Sales', 'Marketing'],
+                present: [
+                    departmentData.hr.attendance.filter(status => status === 'Present').length,
+                    departmentData.it.attendance.filter(status => status === 'Present').length,
+                    departmentData.sales.attendance.filter(status => status === 'Present').length,
+                    departmentData.marketing.attendance.filter(status => status === 'Present').length
+                ],
+                absent: [
+                    departmentData.hr.attendance.filter(status => status === 'Absent').length,
+                    departmentData.it.attendance.filter(status => status === 'Absent').length,
+                    departmentData.sales.attendance.filter(status => status === 'Absent').length,
+                    departmentData.marketing.attendance.filter(status => status === 'Absent').length
+                ]
+            };
+
+            let attendanceChart;
+
+            // Function to create or update the chart
+            function updateChart(labels, presentData, absentData = null, label = 'Department Attendance') {
+                if (attendanceChart) {
+                    attendanceChart.destroy(); // Destroy the existing chart
+                }
+
+                const datasets = [
+                    {
+                        label: 'Present',
+                        data: presentData,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }
+                ];
+
+                if (absentData) {
+                    datasets.push({
+                        label: 'Absent',
+                        data: absentData,
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    });
+                }
+
+                attendanceChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Employees'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: label === 'Department Attendance' ? 'Departments' : 'Employees'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                            },
+                            tooltip: {
+                                enabled: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Initial chart showing present and absent employees for all departments
+            updateChart(departmentSummary.labels, departmentSummary.present, departmentSummary.absent, 'Department Attendance');
+
+            // Event listener for department selection
+            departmentSelect.addEventListener('change', function () {
+                const selectedDepartment = departmentSelect.value;
+
+                if (selectedDepartment && departmentData[selectedDepartment]) {
+                    const { labels, attendance } = departmentData[selectedDepartment];
+                    const presentData = attendance.map(status => status === 'Present' ? 1 : 0);
+                    const absentData = attendance.map(status => status === 'Absent' ? 1 : 0);
+                    updateChart(labels, presentData, absentData, 'Employee Attendance');
+                } else {
+                    // Show present and absent employees for all departments if no specific department is selected
+                    updateChart(departmentSummary.labels, departmentSummary.present, departmentSummary.absent, 'Department Attendance');
+                }
+            });
+        });
     </script>
+
     <!-- Notification Details Modal -->
-    <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+    <!-- <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-dark text-light">
                 <div class="modal-header border-bottom border-secondary">
@@ -854,8 +1183,8 @@ setInterval(setCurrentTime, 1000);
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="notificationModalBody">
-                    <!-- Notification details will be loaded here -->
-                </div>
+                    Notification details will be loaded here -->
+                <!-- </div>
                 <div class="modal-footer border-top border-secondary">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
@@ -863,7 +1192,7 @@ setInterval(setCurrentTime, 1000);
         </div>
     </div>
 
-    <!-- Error Modal -->
+    Error Modal -->
     <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-dark text-light">
@@ -880,13 +1209,85 @@ setInterval(setCurrentTime, 1000);
             </div>
         </div>
     </div>
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'> </script>
+
+    <!-- All Notifications Modal -->
+    <div class="modal fade" id="allNotificationsModal" tabindex="-1" aria-labelledby="allNotificationsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content custom-modal">
+                <div class="modal-header border-bottom border-dark">
+                    <h5 class="modal-title" id="allNotificationsModalLabel">🔔 All Notifications</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body custom-body" id="allNotificationsModalBody">
+                    <!-- All notifications will be loaded here -->
+                    <ul class="list-group">
+                        <?php foreach ($notifications as $notification): ?>
+                            <li class="list-group-item custom-item <?php echo $notification['is_read'] ? 'read' : 'unread'; ?>">
+                                <span class="notif-icon">
+                                    <?php if (!$notification['is_read']): ?>
+                                        🔴
+                                    <?php else: ?>
+                                        ⚪
+                                    <?php endif; ?>
+                                </span>
+                                <?php echo htmlspecialchars($notification['message']); ?>
+                                <span class="time-stamp">Just now</span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <div class="modal-footer border-top border-dark">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to log out?
+                </div>
+                <div class="modal-footer border-top border-secondary">
+                    <button type="button" class="btn border-secondary text-light" data-bs-dismiss="modal">Cancel</button>
+                    <form action="../admin/logout.php" method="POST">
+                        <button type="submit" class="btn btn-danger">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script src="../js/admin.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js" crossorigin="anonymous"></script> 
-    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/umd/simple-datatables.min.js" crossorigin="anonymous"></script>
-    <script src="../js/datatables-simple-demo.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.querySelector('.input-group-sm input');
+    const table = document.getElementById('datatablesSimple');
+    const rows = table.querySelectorAll('tbody tr');
 
-</body>
+    searchInput.addEventListener('input', function () {
+        const searchTerm = searchInput.value.toLowerCase();
 
-</html>
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const nameCell = cells[0].textContent.toLowerCase();
+
+            if (nameCell.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+
