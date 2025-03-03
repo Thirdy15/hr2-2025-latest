@@ -2,18 +2,17 @@
 session_start();
 
 if (!isset($_SESSION['a_id'])) {
-    header("Location: ../admin/adminlogin.php");
+    header("Location: ../admin/login.php");
     exit();
 }
 
-// Include the database connection  
-include '../db/db_conn.php'; 
+include '../db/db_conn.php';
 
 // Define the values for role and department
 $role = 'employee';
 $department = 'Finance Department';
 
-// Fetch employee records where role is 'employee' and department is 'Administration Department'
+// Fetch employee records where role is 'employee' and department is 'Finance Department'
 $sql = "SELECT e_id, firstname, lastname, role, position FROM employee_register WHERE role = ? AND department = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('ss', $role, $department);
@@ -65,26 +64,27 @@ if ($result->num_rows > 0) {
 $conn->close();
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Evaluation</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <link href="../css/styles.css" rel="stylesheet">
-    <link href="../css/star.css" rel="stylesheet">
+    <title>Finance Department Evaluation | HR2</title>
+    <link href="../css/styles.css" rel="stylesheet" />
+    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
 </head>
-
-<body class="bg-dark text-light">
-    <div class="container mt-5">
-        <h2 class="text-center text-primary mb-4">Finance Department Evaluation</h2>
-
-        <!-- Employee Evaluation Table -->
-        <div class="table-responsive">
-            <table class="table table-striped table-hover text-dark">
+<body class="sb-nav-fixed bg-black">
+    <?php include 'navbar.php'; ?>
+    <div id="layoutSidenav">
+        <?php include 'sidebar.php'; ?>
+        <div id="layoutSidenav_content">
+            <main class="bg-black">
+                <div class="container-fluid position-relative px-4">
+                    <h1 class="mb-4 text-light">Finance Department Evaluation</h1>
+                </div>
+                <div class="container-fluid px-4">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover text-dark">
                 <thead class="thead-dark">
                     <tr>
                         <th>Name</th>

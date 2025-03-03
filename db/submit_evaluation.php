@@ -11,26 +11,16 @@ if (!isset($_SESSION['a_id'])) {
 
 // Get the admin ID from the session
 $adminId = $_SESSION['a_id'];
-echo 'Admin ID from session: ' . $adminId . '<br>';  // Debugging output for admin ID
 
 // Fetch admin details using the session's a_id
 $adminSql = "SELECT firstname, lastname FROM admin_register WHERE a_id = ?";
 $adminStmt = $conn->prepare($adminSql);
-
-// Check if the statement is prepared correctly
-if (!$adminStmt) {
-    echo "Error in preparing the query: " . $conn->error;
-    exit();
-}
-
-// Bind the adminId and execute the query
 $adminStmt->bind_param('i', $adminId);
 $adminStmt->execute();
+$adminStmt->bind_result($adminFirstName, $adminLastName);
 
-// Debugging: check if the query executed and fetched data
-if ($adminStmt->bind_result($adminFirstName, $adminLastName) && $adminStmt->fetch()) {
+if ($adminStmt->fetch()) {
     $adminName = $adminFirstName . ' ' . $adminLastName;
-    echo "Admin name: " . $adminName . '<br>';  // Debugging output for admin name
 } else {
     echo 'Error: Admin not found or failed to fetch name for ID: ' . $adminId;
     exit();
@@ -40,8 +30,8 @@ $adminStmt->close();
 
 // Get data from the POST request
 $employeeId = $_POST['e_id'];
-$categoryAverages = $_POST['categoryAverages'];
-$department = $_POST['department']; // Get the department from POST data
+$categoryAverages = json_decode($_POST['categoryAverages'], true);
+$department = $_POST['department'];
 
 // Fetch the employee's first and last name
 $employeeSql = "SELECT firstname, lastname FROM employee_register WHERE e_id = ?";
@@ -51,10 +41,9 @@ $employeeStmt->execute();
 $employeeStmt->bind_result($employeeFirstName, $employeeLastName);
 
 if ($employeeStmt->fetch()) {
-    // Combine employee first and last name
     $employeeName = $employeeFirstName . ' ' . $employeeLastName;
 } else {
-    echo 'Error: Employee not found or unable to fetch the name.<br>';
+    echo 'Error: Employee not found or unable to fetch the name.';
     exit();
 }
 $employeeStmt->close();
@@ -74,34 +63,28 @@ if ($checkStmt->num_rows > 0) {
                 a_id, admin_name, e_id, employee_name, department, quality, communication_skills, teamwork, punctuality, initiative
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
-
-    // Bind the average ratings to the statement (i for integer, d for decimal)
     $stmt->bind_param(
-        'isissddddd', 
+        'isissddddd',
         $adminId,
-        $adminName, 
+        $adminName,
         $employeeId,
         $employeeName,
         $department,
-        $categoryAverages['QualityOfWork'], 
-        $categoryAverages['CommunicationSkills'], 
-        $categoryAverages['Teamwork'], 
-        $categoryAverages['Punctuality'], 
+        $categoryAverages['QualityOfWork'],
+        $categoryAverages['CommunicationSkills'],
+        $categoryAverages['Teamwork'],
+        $categoryAverages['Punctuality'],
         $categoryAverages['Initiative']
     );
 
-    // Execute the statement and check if successful
     if ($stmt->execute()) {
         // Log this activity
         $actionType = "Employee Evaluation";
         $affectedFeature = "Evaluation";
         $details = "Admin ($adminName) evaluated employee Name: $employeeName in $department.";
-
-        // Capture IP address
         $ipAddress = $_SERVER['REMOTE_ADDR'];
 
-        // Log query
-        $logQuery = "INSERT INTO activity_logs (admin_id, admin_name, action_type, affected_feature, details, ip_address) 
+        $logQuery = "INSERT INTO activity_logs (admin_id, admin_name, action_type, affected_feature, details, ip_address)
                      VALUES (?, ?, ?, ?, ?, ?)";
         $logStmt = $conn->prepare($logQuery);
         $logStmt->bind_param("isssss", $adminId, $adminName, $actionType, $affectedFeature, $details, $ipAddress);
@@ -114,7 +97,7 @@ if ($checkStmt->num_rows > 0) {
 
         $logStmt->close();
     } else {
-        echo 'Error: ' . $conn->error;
+        echo 'Error: ' . $stmt->error;
     }
     $stmt->close();
 }

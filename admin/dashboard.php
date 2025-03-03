@@ -46,13 +46,6 @@ while ($row = $result->fetch_assoc()) {
     $notifications[] = $row;
 }
 
-// Fetch new employee notifications
-$sql = "SELECT id, message, created_at, is_read FROM notifications ORDER BY created_at DESC";
-$result = $conn->query($sql);
-while ($row = $result->fetch_assoc()) {
-    $notifications[] = $row;
-}
-
 // Sort notifications by created_at
 usort($notifications, function($a, $b) {
     return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -139,192 +132,18 @@ $conn->close();
 </style>
 </head>
         
-<body class="sb-nav-fixed bg-black">
-    <nav class="sb-topnav navbar navbar-expand navbar-dark border-bottom border-1 border-secondary bg-dark">
-        <a class="navbar-brand ps-3 text-muted" href="../admin/dashboard.php">Admin Portal</a>
-        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" href="#!"><i class="fas fa-bars text-light"></i></button>
-            
-        <!-- Flex container to hold both time/date and search form -->
-        <div class="d-flex ms-auto me-0 me-md-3 my-2 my-md-0 align-items-center">
-            <div class="text-light me-3 p-2 rounded shadow-sm bg-gradient" id="currentTimeContainer" 
-                style="background: linear-gradient(45deg, #333333, #444444); border-radius: 5px;">
-                <span class="d-flex align-items-center">
-                    <span class="pe-2">
-                        <i class="fas fa-clock"></i> 
-                        <span id="currentTime">00:00:00</span>
-                    </span>
-                    <button class="btn btn-outline-warning btn-sm ms-2" type="button" onclick="toggleCalendar()">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span id="currentDate">00/00/0000</span>
-                    </button>
-                </span>
-            </div>
-            
-            <form class="d-none d-md-inline-block form-inline">
-                <div class="input-group">
-                    <input class="form-control" type="text" placeholder="Search for..." aria-label="Search for..." aria-describedby="btnNavbarSearch" />
-                    <button class="btn btn-warning" id="btnNavbarSearch" type="button"><i class="fas fa-search"></i></button>
-                </div>
-            </form>
-            
-            <!-- Notifications Bell -->
-            <div class="ms-3 dropdown me-3">
-                <button class="btn btn-outline-light btn-sm position-relative" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-bell"></i>
-                    <?php if (count(array_filter($notifications, fn($n) => !$n['is_read'])) > 0): ?>
-                        <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" id="notificationCount"><?php echo count(array_filter($notifications, fn($n) => !$n['is_read'])); ?></span>
-                    <?php endif; ?>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end bg-dark text-secondary border-secondary" aria-labelledby="notificationsDropdown" style="max-height: 300px; overflow-y: auto;">
-                    <li class="dropdown-header text-center text-light d-flex justify-content-between align-items-center">
-                        Notifications
-                        <button class="btn btn-outline-danger btn-sm" onclick="clearAllNotifications()">Clear All</button>
-                    </li>
-                    <li><hr class="dropdown-divider border-secondary"></li>
-                    <?php if (count($notifications) > 0): ?>
-                        <?php foreach (array_slice($notifications, 0, 10) as $notification): ?>
-                            <li>
-                                <a class="dropdown-item bg-dark text-white <?php echo $notification['is_read'] ? '' : 'font-weight-bold'; ?>" href="#" data-id="<?php echo $notification['id']; ?>" onclick="markAsRead(<?php echo $notification['id']; ?>)">
-                                    <?php echo htmlspecialchars($notification['message']); ?>
-                                    <?php if (!$notification['is_read']): ?>
-                                        <span class="badge bg-danger ms-2">•</span>
-                                    <?php endif; ?>
-                                </a>
-                                <li><hr class="dropdown-divider border-secondary"></li>
-                            </li>
-                        <?php endforeach; ?>
-                        <?php if (count($notifications) > 10): ?>
-                            <li><a class="dropdown-item bg-dark text-secondary text-center text-danger" href="#" onclick="showAllNotifications()">Show All Notifications</a></li>
-                        <?php endif; ?>
-                    <?php else: ?>
-                        <li><a class="dropdown-item bg-dark text-secondary" href="#">No new notifications</a></li>
-                    <?php endif; ?>
-                </ul>
-            </div>
-        </div>
-        
+<body class="sb-nav-fixed bg-black">>
+    <?php include 'navbar.php'; ?>
     </nav>
     <div id="layoutSidenav">
-        <div id="layoutSidenav_nav">
-            <nav class="sb-sidenav accordion bg-dark" id="sidenavAccordion">
-                <div class="sb-sidenav-menu ">
-                    <div class="nav">
-                        <div class="sb-sidenav-menu-heading text-center text-muted">Your Profile</div>
-                        <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
-                            <li class="nav-item dropdown text">
-                                <a class="nav-link dropdown-toggle text-light d-flex justify-content-center ms-4" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <img src="<?php echo (!empty($adminInfo['pfp']) && $adminInfo['pfp'] !== 'defaultpfp.jpg') 
-                                        ? htmlspecialchars($adminInfo['pfp']) 
-                                        : '../img/defaultpfp.jpg'; ?>" 
-                                        class="rounded-circle border border-light" width="80" height="80" alt="Profile Picture" />
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <li><a class="dropdown-item loading" href="../admin/profile.php">Profile</a></li>
-                                    <li><a class="dropdown-item" href="../admin/settings.php">Settings</a></li>
-                                    <li><a class="dropdown-item" href="#!">Activity Log</a></li>
-                                    <li><hr class="dropdown-divider border-black" /></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">Logout</a></li>
-                                </ul>
-                            </li>
-                            
-                            <li class="nav-item text-light d-flex ms-3 flex-column align-items-center text-center">
-                                <span class="big text-light mb-1">
-                                    <?php
-                                        if ($adminInfo) {
-                                        echo htmlspecialchars($adminInfo['firstname'] . ' ' . $adminInfo['middlename'] . ' ' . $adminInfo['lastname']);
-                                        } else {
-                                        echo "Admin information not available.";
-                                        }
-                                    ?>
-                                </span>      
-                                <span class="big text-light">
-                                    <?php
-                                        if ($adminInfo) {
-                                        echo htmlspecialchars($adminInfo['role']);
-                                        } else {
-                                        echo "User information not available.";
-                                        }
-                                    ?>
-                                </span>
-                            </li>
-                        </ul>
-                        <div class="sb-sidenav-menu-heading text-center text-muted border-top border-1 border-secondary mt-3">Admin Dashboard</div>
-                        <a class="nav-link text-light loading" href="../admin/dashboard.php">
-                            <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
-                            Dashboard
-                        </a>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseTAD" aria-expanded="false" aria-controls="collapseTAD">
-                            <div class="sb-nav-link-icon"><i class="fa fa-address-card"></i></div>
-                            Time and Attendance
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseTAD" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/attendance.php">Attendance</a>
-                                <a class="nav-link text-light loading" href="../admin/timesheet.php">Timesheet</a>
-                            </nav>
-                        </div>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLM" aria-expanded="false" aria-controls="collapseLM">
-                            <div class="sb-nav-link-icon"><i class="fas fa-calendar-times"></i></div>
-                            Leave Management
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLM" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/leave_requests.php">Leave Requests</a>
-                                <a class="nav-link text-light loading" href="../admin/leave_history.php">Leave History</a>
-                            </nav>
-                        </div>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePM" aria-expanded="false" aria-controls="collapsePM">
-                            <div class="sb-nav-link-icon"><i class="fas fa-line-chart"></i></div>
-                            Performance Management
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapsePM" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/evaluation.php">Evaluation</a>
-                            </nav>
-                        </div>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseSR" aria-expanded="false" aria-controls="collapseSR">
-                            <div class="sb-nav-link-icon"><i class="fa fa-address-card"></i></div>
-                            Social Recognition
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseSR" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/awardee.php">Awardee</a>
-                                <a class="nav-link text-light loading" href="../admin/recognition.php">Generate Certificate</a>
-                            </nav>
-                        </div>
-                        <div class="sb-sidenav-menu-heading text-center text-muted border-top border-1 border-secondary mt-3">Account Management</div>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayouts" aria-expanded="false" aria-controls="collapseLayouts">
-                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                            Accounts
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayouts" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/calendar.php">Calendar</a>
-                                <a class="nav-link text-light loading" href="../admin/admin.php">Admin Accounts</a>
-                                <a class="nav-link text-light loading" href="../admin/employee.php">Employee Accounts</a>
-                            </nav>
-                        </div>
-                        <div class="collapse" id="collapsePages" aria-labelledby="headingTwo" data-bs-parent="#sidenavAccordion">
-                        </div>
-                    </div>
-                </div>
-                <div class="sb-sidenav-footer bg-black text-light border-top border-1 border-secondary">
-                    <div class="small">Logged in as: <?php echo htmlspecialchars($adminInfo['role']); ?></div>
-                </div>
-            </nav>
-        </div>
+        <?php include 'sidebar.php'; ?>
         <div id="layoutSidenav_content">
             <main class="bg-black">
                 <div class="container-fluid position-relative px-4">
                     <h1 class="mb-4 text-light">Dashboard</h1>
                         <div class="container" id="calendarContainer" 
-                            style="position: fixed; top: 9%; right: 0; z-index: 1050; 
-                            width: 700px; display: none;">
+                            style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050; 
+                            width: 80%; height: 80%; display: none;">
                             <div class="row">
                                 <div class="col-md-12">
                                     <div id="calendar" class="p-2"></div>
@@ -532,40 +351,7 @@ $conn->close();
                     ?>
                 </div>
             </main>
-            <!-- All Notifications Modal -->
-            <!-- Notifications Modal -->
-<div class="modal fade" id="allNotificationsModal" tabindex="-1" aria-labelledby="allNotificationsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content custom-modal">
-            <div class="modal-header border-bottom border-dark">
-                <h5 class="modal-title" id="allNotificationsModalLabel">🔔 All Notifications</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body custom-body" id="allNotificationsModalBody">
-                <!-- All notifications will be loaded here -->
-                <ul class="list-group">
-                    <?php foreach ($notifications as $notification): ?>
-                        <li class="list-group-item custom-item <?php echo $notification['is_read'] ? 'read' : 'unread'; ?>">
-                            <span class="notif-icon">
-                                <?php if (!$notification['is_read']): ?>
-                                    🔴
-                                <?php else: ?>
-                                    ⚪
-                                <?php endif; ?>
-                            </span>
-                            <?php echo htmlspecialchars($notification['message']); ?>
-                            <span class="time-stamp">Just now</span>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-            <div class="modal-footer border-top border-dark">
-                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-                <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+         <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content bg-dark text-light">
                             <div class="modal-header border-bottom border-secondary">
@@ -584,18 +370,7 @@ $conn->close();
                         </div>
                     </div>
                 </div>  
-            <footer class="py-4 bg-dark mt-auto border-top border-1 border-secondary">
-                <div class="container-fluid px-4">
-                    <div class="d-flex align-items-center justify-content-between small">
-                        <div class="text-muted">Copyright &copy; Your Website 2023</div>
-                            <div>
-                                <a href="#">Privacy Policy</a>
-                                &middot;
-                                <a href="#">Terms &amp; Conditions</a>
-                            </div>
-                            </div>
-                    </div>
-            </footer>
+            <?php include 'footer.php'; ?>                        
         </div>
     </div>
     <div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true">
@@ -860,84 +635,6 @@ setInterval(setCurrentTime, 1000);
             }
         }
 
-        // Add event listeners to notification items
-        document.addEventListener('DOMContentLoaded', function () {
-            const notificationItems = document.querySelectorAll('.dropdown-item');
-            notificationItems.forEach(item => {
-                item.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    const notificationId = this.getAttribute('data-id');
-                    markAsRead(notificationId);
-                });
-            });
-
-            // Show reminder if there are unread notifications
-            if (document.querySelectorAll('.dropdown-item.font-weight-bold').length > 0) {
-                showReminder();
-            }
-        });
-
-        // Function to clear all notifications
-        function clearAllNotifications() {
-            fetch('../admin/clear_notifications.php', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload(); // Reload the page to update the notifications
-                } else {
-                    showErrorModal('Failed to clear notifications.');
-                }
-            })
-            .catch(error => {
-                console.error('Error clearing notifications:', error);
-                showErrorModal('An error occurred while clearing notifications.');
-            });
-        }
-
-        // Function to show all notifications in modal
-        function showAllNotifications() {
-            const allNotificationsModalBody = document.getElementById('allNotificationsModalBody');
-            allNotificationsModalBody.innerHTML = `
-                <ul class="list-group">
-                    <?php foreach ($notifications as $notification): ?>
-                        <li class="list-group-item bg-dark text-white <?php echo $notification['is_read'] ? '' : 'font-weight-bold'; ?>">
-                            <?php echo htmlspecialchars($notification['message']); ?>
-                            <?php if (!$notification['is_read']): ?>
-                                <span class="badge bg-danger ms-2">•</span>
-                            <?php endif; ?>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            `;
-            const allNotificationsModal = new bootstrap.Modal(document.getElementById('allNotificationsModal'));
-            allNotificationsModal.show();
-        }
-
-        function showErrorModal(message) {
-            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-            document.getElementById('errorMessage').textContent = message;
-            errorModal.show();
-        }
-
-        function showNotificationDetails(message) {
-            const modalBody = document.getElementById('notificationModalBody');
-            modalBody.textContent = message;
-            const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'));
-            notificationModal.show();
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const notificationItems = document.querySelectorAll('.dropdown-item');
-            notificationItems.forEach(item => {
-                item.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    const message = this.textContent;
-                    showNotificationDetails(message);
-                });
-            });
-        });
 
         // Dummy Data for Employee Performance
         const employees = [
@@ -1209,40 +906,6 @@ setInterval(setCurrentTime, 1000);
             </div>
         </div>
     </div>
-
-    <!-- All Notifications Modal -->
-    <div class="modal fade" id="allNotificationsModal" tabindex="-1" aria-labelledby="allNotificationsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content custom-modal">
-                <div class="modal-header border-bottom border-dark">
-                    <h5 class="modal-title" id="allNotificationsModalLabel">🔔 All Notifications</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body custom-body" id="allNotificationsModalBody">
-                    <!-- All notifications will be loaded here -->
-                    <ul class="list-group">
-                        <?php foreach ($notifications as $notification): ?>
-                            <li class="list-group-item custom-item <?php echo $notification['is_read'] ? 'read' : 'unread'; ?>">
-                                <span class="notif-icon">
-                                    <?php if (!$notification['is_read']): ?>
-                                        🔴
-                                    <?php else: ?>
-                                        ⚪
-                                    <?php endif; ?>
-                                </span>
-                                <?php echo htmlspecialchars($notification['message']); ?>
-                                <span class="time-stamp">Just now</span>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-                <div class="modal-footer border-top border-dark">
-                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Logout Modal -->
     <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -1262,7 +925,9 @@ setInterval(setCurrentTime, 1000);
                 </div>
             </div>
         </div>
-    </div>
+    </div>      
+                                        
+                                        
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
@@ -1291,3 +956,55 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+<script>
+        // Function to show notification details in modal
+        function showNotificationDetails(message) {
+            const modalBody = document.getElementById('notificationModalBody');
+            modalBody.textContent = message;
+            const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'));
+            notificationModal.show();
+        }
+
+        // Add event listeners to notification items
+        document.addEventListener('DOMContentLoaded', function () {
+            const notificationItems = document.querySelectorAll('.dropdown-item');
+            notificationItems.forEach(item => {
+                item.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    const message = this.textContent;
+                    showNotificationDetails(message);
+                });
+            });
+        });
+
+        // Function to mark a notification as read
+        function markAsRead(notificationId) {
+            fetch('../admin/mark_notification_read.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: notificationId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reduce the notification count
+                    const notificationCountElement = document.getElementById('notificationCount');
+                    let notificationCount = parseInt(notificationCountElement.textContent);
+                    notificationCount -= 1;
+                    if (notificationCount > 0) {
+                        notificationCountElement.textContent = notificationCount;
+                    } else {
+                        notificationCountElement.remove();
+                    }
+                    // Mark the notification as read visually
+                    const notificationItem = document.querySelector(`a[data-id="${notificationId}"]`);
+                    notificationItem.classList.remove('font-weight-bold');
+                    notificationItem.querySelector('.badge').remove();
+                } else {
+                    alert('Failed to mark notification as read.');
+                }
+            })
+        }
+    </script>

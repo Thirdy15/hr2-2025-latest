@@ -45,6 +45,29 @@ $creditData = getAdminEvaluationProgress($conn, 'Credit Department', $adminId);
 $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
 ?>
 
+<?php
+// Check if it is the first week of the month
+$currentDay = date('j'); // Current day of the month (1-31)
+$isFirstWeek = ($currentDay <= 7); // First week is days 1-7
+
+// Set the evaluation period to the previous month if it is the first week
+if ($isFirstWeek) {
+    $evaluationMonth = date('m', strtotime('last month')); // Previous month
+    $evaluationYear = date('Y', strtotime('last month'));  // Year of the previous month
+    $evaluationPeriod = date('F Y', strtotime('last month')); // Format: February 2024
+
+    // Calculate the end date of the evaluation period (7th day of the current month)
+    $evaluationEndDate = date('F j, Y', strtotime(date('Y-m-07'))); // Format: March 7, 2024
+} else {
+    // If it is not the first week, evaluations are closed
+    $evaluationMonth = null;
+    $evaluationYear = null;
+    $evaluationPeriod = null;
+    $evaluationEndDate = null;
+}
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,154 +80,57 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
+<style>
+    .star-rating {
+        display: flex;
+        direction: rtl;
+        unicode-bidi: bidi-override;
+    }
+
+    .star-rating input[type="radio"] {
+        display: none;
+    }
+
+    .star-rating label {
+        font-size: 24px;
+        color: #ddd;
+        cursor: pointer;
+        padding: 0 2px;
+    }
+
+    .star-rating label:hover,
+    .star-rating label:hover ~ label,
+    .star-rating input[type="radio"]:checked ~ label {
+        color: #ffc107;
+    }
+
+    .star-rating input[type="radio"]:checked ~ label {
+        color: #ffc107;
+    }
+
+    .btn-close-white {
+        border: none;
+        background: none;
+    }
+
+    .btn-close-white:hover {
+        background-color: #ffc107;
+        color: white;
+    }
+</style>
+
 <body class="sb-nav-fixed bg-black">
-    <nav class="sb-topnav navbar navbar-expand navbar-dark border-bottom border-1 border-secondary bg-dark">
-        <a class="navbar-brand ps-3 text-muted" href="../admin/dashboard.php">Microfinance</a>
-        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" href="#!"><i class="fas fa-bars text-light"></i></button>
-            <div class="d-flex ms-auto me-0 me-md-3 my-2 my-md-0 align-items-center">
-                <div class="text-light me-3 p-2 rounded shadow-sm bg-gradient" id="currentTimeContainer" 
-                    style="background: linear-gradient(45deg, #333333, #444444); border-radius: 5px;">
-                    <span class="d-flex align-items-center">
-                        <span class="pe-2">
-                            <i class="fas fa-clock"></i> 
-                            <span id="currentTime">00:00:00</span>
-                        </span>
-                        <button class="btn btn-outline-warning btn-sm ms-2" type="button" onclick="toggleCalendar()">
-                            <i class="fas fa-calendar-alt"></i>
-                            <span id="currentDate">00/00/0000</span>
-                        </button>
-                    </span>
-                </div>
-                <form class="d-none d-md-inline-block form-inline">
-                    <div class="input-group">
-                        <input class="form-control" type="text" placeholder="Search for..." aria-label="Search for..." aria-describedby="btnNavbarSearch" />
-                        <button class="btn btn-warning" id="btnNavbarSearch" type="button"><i class="fas fa-search"></i></button>
-                    </div>
-                </form>
-            </div>
-    </nav>
+    <?php include 'navbar.php'; ?>
     <div id="layoutSidenav">
-        <div id="layoutSidenav_nav">
-            <nav class="sb-sidenav accordion bg-dark" id="sidenavAccordion">
-                <div class="sb-sidenav-menu ">
-                    <div class="nav">
-                        <div class="sb-sidenav-menu-heading text-center text-muted">Your Profile</div>
-                        <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
-                            <li class="nav-item dropdown text">
-                                <a class="nav-link dropdown-toggle text-light d-flex justify-content-center ms-4" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <img src="<?php echo (!empty($adminInfo['pfp']) && $adminInfo['pfp'] !== 'defaultpfp.png') 
-                                        ? htmlspecialchars($adminInfo['pfp']) 
-                                        : '../img/defaultpfp.jpg'; ?>" 
-                                        class="rounded-circle border border-light" width="120" height="120" alt="Profile Picture" />
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <li><a class="dropdown-item loading" href="../admin/profile.php">Profile</a></li>
-                                    <li><a class="dropdown-item" href="#!">Settings</a></li>
-                                    <li><a class="dropdown-item" href="#!">Activity Log</a></li>
-                                    <li><hr class="dropdown-divider" /></li>
-                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">Logout</a></li>
-                                </ul>
-                            </li>
-                            <li class="nav-item text-light d-flex ms-3 flex-column align-items-center text-center">
-                                <span class="big text-light mb-1">
-                                    <?php
-                                        if ($adminInfo) {
-                                        echo htmlspecialchars($adminInfo['firstname'] . ' ' . $adminInfo['middlename'] . ' ' . $adminInfo['lastname']);
-                                        } else {
-                                        echo "Admin information not available.";
-                                        }
-                                    ?>
-                                </span>      
-                                <span class="big text-light">
-                                    <?php
-                                        if ($adminInfo) {
-                                        echo htmlspecialchars($adminInfo['role']);
-                                        } else {
-                                        echo "User information not available.";
-                                        }
-                                    ?>
-                                </span>
-                            </li>
-                        </ul>
-                        <div class="sb-sidenav-menu-heading text-center text-muted border-top border-1 border-secondary mt-3">Admin Dashboard</div>
-                        <a class="nav-link text-light loading" href="../admin/dashboard.php">
-                            <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
-                            Dashboard
-                        </a>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseTAD" aria-expanded="false" aria-controls="collapseTAD">
-                            <div class="sb-nav-link-icon"><i class="fa fa-address-card"></i></div>
-                            Time and Attendance
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseTAD" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/attendance.php">Attendance</a>
-                                <a class="nav-link text-light loading" href="../admin/timesheet.php">Timesheet</a>
-                            </nav>
-                        </div>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLM" aria-expanded="false" aria-controls="collapseLM">
-                            <div class="sb-nav-link-icon"><i class="fas fa-calendar-times"></i></div>
-                            Leave Management
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLM" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/leave_requests.php">Leave Requests</a>
-                                <a class="nav-link text-light loading" href="../admin/leave_history.php">Leave History</a>
-                                <a class="nav-link text-light loading"  href="../admin/leave_allocation.php">Set Leave</a>
-                            </nav>
-                        </div>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePM" aria-expanded="false" aria-controls="collapsePM">
-                            <div class="sb-nav-link-icon"><i class="fas fa-line-chart"></i></div>
-                            Performance Management
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapsePM" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/evaluation.php">Evaluation</a>
-                            </nav>
-                        </div>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseSR" aria-expanded="false" aria-controls="collapseSR">
-                            <div class="sb-nav-link-icon"><i class="fa fa-address-card"></i></div>
-                            Social Recognition
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseSR" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/awardee.php">Awardee</a>
-                                <a class="nav-link text-light loading" href="../admin/recognition.php">Generate Certificate</a>
-                            </nav>
-                        </div>
-                        <div class="sb-sidenav-menu-heading text-center text-muted border-top border-1 border-secondary">Account Management</div>
-                        <a class="nav-link collapsed text-light" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayouts" aria-expanded="false" aria-controls="collapseLayouts">
-                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                            Accounts
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayouts" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link text-light loading" href="../admin/calendar.php">Calendar</a>
-                                <a class="nav-link text-light loading" href="../admin/admin.php">Admin Accounts</a>
-                                <a class="nav-link text-light loading" href="../admin/employee.php">Employee Accounts</a>
-                            </nav>
-                        </div>
-                        <div class="collapse" id="collapsePages" aria-labelledby="headingTwo" data-bs-parent="#sidenavAccordion">
-                        </div>
-                    </div>
-                </div>
-                <div class="sb-sidenav-footer bg-black text-light border-top border-1 border-secondary">
-                    <div class="small">Logged in as: <?php echo htmlspecialchars($adminInfo['role']); ?></div>
-                </div>
-            </nav>
-        </div>
+       <?php include 'sidebar.php'; ?>
         <div id="layoutSidenav_content">
             <main class="bg-black">
                 <div class="container-fluid position-relative px-4">
                     <h1 class="mb-4 text-light">Evaluation</h1>
                 </div>
                 <div class="container" id="calendarContainer" 
-                    style="position: fixed; top: 9%; right: 0; z-index: 1050; 
-                    width: 700px; display: none;">
+                tyle="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1050; 
+                width: 80%; height: 80%; display: none;">
                     <div class="row">
                         <div class="col-md-12">
                             <div id="calendar" class="p-2"></div>
@@ -213,10 +139,11 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
                 </div>     
                 <div class="container-fluid px-4">
                     <div class="row justify-content-center">
+                        <!-- Finance Department Card -->
                         <div class="col-xl-4 col-md-6 mt-5">
                             <div class="card mb-4">
                                 <div class="card-body bg-secondary text-center">
-                                    <a href="../admin/finance.php" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100">Finance Department</a>
+                                    <button type="button" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100" data-bs-toggle="modal" data-bs-target="#financeModal">Finance Department</button>
                                 </div>
                                 <div class="card-footer d-flex align-items-center justify-content-between bg-dark border-bottom border-light department-toggle">
                                     <div class="small text-warning">Details</div>
@@ -258,10 +185,11 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
                                 </div>
                             </div>
                         </div>
+                        <!-- Human Resource Department Card -->
                         <div class="col-xl-4 col-md-6 mt-5">
                             <div class="card mb-4">
                                 <div class="card-body bg-secondary text-center">
-                                    <a href="../admin/hr.php" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100">Human Resource Department</a>
+                                    <button type="button" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100" data-bs-toggle="modal" data-bs-target="#hrModal">Human Resource Department</button>
                                 </div>
                                 <div class="card-footer d-flex align-items-center justify-content-between bg-dark border-bottom border-light department-toggle">
                                     <div class="small text-warning">Details</div>
@@ -303,10 +231,11 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
                                 </div>
                             </div>
                         </div>
+                        <!-- Administration Department Card -->
                         <div class="col-xl-4 col-md-6 mt-5">
                             <div class="card mb-4">
                                 <div class="card-body bg-secondary text-center">
-                                    <a href="../admin/administration.php" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100">Administration Department</a>
+                                    <button type="button" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100" data-bs-toggle="modal" data-bs-target="#administrationModal">Administration Department</button>
                                 </div>
                                 <div class="card-footer d-flex align-items-center justify-content-between bg-dark border-bottom border-light department-toggle">
                                     <div class="small text-warning">Details</div>
@@ -348,10 +277,11 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
                                 </div>
                             </div>
                         </div>
+                        <!-- Sales Department Card -->
                         <div class="col-xl-4 col-md-6 mt-5">
                             <div class="card mb-4">
                                 <div class="card-body bg-secondary text-center">
-                                    <a href="../admin/sales.php" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100">Sales Department</a>
+                                    <button type="button" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100" data-bs-toggle="modal" data-bs-target="#salesModal">Sales Department</button>
                                 </div>
                                 <div class="card-footer d-flex align-items-center justify-content-between bg-dark border-bottom border-light department-toggle">
                                     <div class="small text-warning">Details</div>
@@ -393,10 +323,11 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
                                 </div>
                             </div>
                         </div>
+                        <!-- Credit Department Card -->
                         <div class="col-xl-4 col-md-6 mt-5">
                             <div class="card mb-4">
                                 <div class="card-body bg-secondary text-center">
-                                    <a href="../admin/credit.php" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100">Credit Department</a>
+                                    <button type="button" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100" data-bs-toggle="modal" data-bs-target="#creditModal">Credit Department</button>
                                 </div>
                                 <div class="card-footer d-flex align-items-center justify-content-between bg-dark border-bottom border-light department-toggle">
                                     <div class="small text-warning">Details</div>
@@ -438,17 +369,18 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
                                 </div>
                             </div>
                         </div>
+                        <!-- IT Department Card -->
                         <div class="col-xl-4 col-md-6 mt-5">
                             <div class="card mb-4">
                                 <div class="card-body bg-secondary text-center">
-                                    <a href="../admin/it.php" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100">IT Department</a>
+                                    <button type="button" class="btn card-button text-light font-weight-bold bg-dark border border-dark w-100" data-bs-toggle="modal" data-bs-target="#itModal">IT Department</button>
                                 </div>
                                 <div class="card-footer d-flex align-items-center justify-content-between bg-dark border-bottom border-light department-toggle">
                                     <div class="small text-warning">Details</div>
                                 </div>
                                 <div id="itInfo" class="bg-dark text-dark">
                                     <div class="card-body">
-                                        <h5 class="text-center mb-4 text-light">It Evaluation Status</h5>
+                                        <h5 class="text-center mb-4 text-light">IT Evaluation Status</h5>
                                         <div class="text-center mb-3">
                                             <span class="badge badge-primary mx-1">Total Employees: <?php echo $itData['total']; ?></span>
                                             <span class="badge badge-success mx-1">Evaluated: <?php echo $itData['evaluated']; ?></span>
@@ -505,18 +437,7 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
                         </div>
                     </div>
                 </div>  
-            <footer class="py-4 bg-dark text-light mt-auto border-top border-secondary">
-                <div class="container-fluid px-4">
-                    <div class="d-flex align-items-center justify-content-between small">
-                        <div class="text-muted">Copyright &copy; Your Website 2024</div>
-                        <div>
-                            <a href="#">Privacy Policy</a>
-                            &middot;
-                            <a href="#">Terms & Conditions</a>
-                        </div>
-                    </div>
-                </div>
-            </footer>
+            <?php include 'footer.php'; ?>
         </div>
     </div>
     <div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true">
@@ -668,6 +589,222 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
             });
         });
         //EVALUATION TOGGLE END
+
+        function submitEvaluation() {
+    const evaluations = [];
+    const questionsDiv = document.getElementById('questions');
+
+    questionsDiv.querySelectorAll('input[type="radio"]:checked').forEach(input => {
+        evaluations.push({
+            question: input.name,
+            rating: input.value
+        });
+    });
+
+    const totalQuestions = questionsDiv.querySelectorAll('.star-rating').length;
+
+    if (evaluations.length !== totalQuestions) {
+        showStatusModal('Please complete the evaluation before submitting.');
+        return;
+    }
+
+    const categoryAverages = {
+        QualityOfWork: calculateAverage('Quality of Work', evaluations),
+        CommunicationSkills: calculateAverage('Communication Skills', evaluations),
+        Teamwork: calculateAverage('Teamwork', evaluations),
+        Punctuality: calculateAverage('Punctuality', evaluations),
+        Initiative: calculateAverage('Initiative', evaluations)
+    };
+
+    const adminId = document.getElementById('a_id').value;
+    const department = document.getElementById('department').value;
+
+    $.ajax({
+        type: 'POST',
+        url: '../db/submit_evaluation.php',
+        data: {
+            e_id: currentEmployeeId,
+            employeeName: currentEmployeeName,
+            employeePosition: currentEmployeePosition,
+            categoryAverages: JSON.stringify(categoryAverages),
+            adminId: adminId,
+            department: department
+        },
+        success: function (response) {
+            console.log(response);
+            if (response === 'You have already evaluated this employee.') {
+                showStatusModal(response);
+            } else {
+                $('#evaluationModal').modal('hide');
+                showStatusModal('Evaluation submitted successfully!');
+            }
+        },
+        error: function (err) {
+            console.error(err);
+            showStatusModal('An error occurred while submitting the evaluation.');
+        }
+    });
+}
+
+function calculateAverage(category, evaluations) {
+    const categoryEvaluations = evaluations.filter(evaluation => evaluation.question.startsWith(category.replace(/\s/g, '')));
+
+    if (categoryEvaluations.length === 0) {
+        return 0;
+    }
+
+    const total = categoryEvaluations.reduce((sum, evaluation) => sum + parseInt(evaluation.rating), 0);
+    return total / categoryEvaluations.length;
+}
+
+function showStatusModal(message) {
+    const statusModal = new bootstrap.Modal(document.getElementById('statusModal'));
+    document.querySelector('#statusModal .modal-body').innerHTML = `<p>${message}</p>`;
+    statusModal.show();
+    setTimeout(() => {
+        statusModal.hide();
+    }, 2000);
+}
+
+function evaluateEmployee(e_id, employeeName, employeePosition, department) {
+        currentEmployeeId = e_id;
+        currentEmployeeName = employeeName;
+        currentEmployeePosition = employeePosition;
+
+        const employeeDetails = `<strong>Name: ${employeeName} <br> Position: ${employeePosition}</strong>`;
+        document.getElementById('employeeDetails').innerHTML = employeeDetails;
+        document.getElementById('department').value = department;
+
+        const questionsDiv = document.getElementById('questions');
+        questionsDiv.innerHTML = '';
+
+        // Start the table structure
+        let tableHtml = `
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Question</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        // Loop through categories and questions to add them into the table
+        for (const [category, categoryQuestions] of Object.entries(questions)) {
+            categoryQuestions.forEach((question, index) => {
+                const questionName = `${category.replace(/\s/g, '')}q${index}`; // Unique name per question
+                tableHtml += `
+                <tr>
+                    <td>${index === 0 ? category : ''}</td>
+                    <td>${question}</td>
+                    <td>
+                        <div class="star-rating">
+                            ${[6, 5, 4, 3, 2, 1].map(value => `
+                                <input type="radio" name="${questionName}" value="${value}" id="${questionName}star${value}">
+                                <label for="${questionName}star${value}">&#9733;</label>
+                            `).join('')}
+                        </div>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        // Close the table structure
+        tableHtml += `
+            </tbody>
+        </table>`;
+
+        questionsDiv.innerHTML = tableHtml;
+
+        $('#evaluationModal').modal('show');
+    }
+
+    function submitEvaluation() {
+        const evaluations = [];
+        const questionsDiv = document.getElementById('questions');
+
+        questionsDiv.querySelectorAll('input[type="radio"]:checked').forEach(input => {
+            evaluations.push({
+                question: input.name,
+                rating: input.value
+            });
+        });
+
+        const totalQuestions = questionsDiv.querySelectorAll('.star-rating').length;
+
+        if (evaluations.length !== totalQuestions) {
+            showStatusModal('Please complete the evaluation before submitting.');
+            return;
+        }
+
+        const categoryAverages = {
+            QualityOfWork: calculateAverage('Quality of Work', evaluations),
+            CommunicationSkills: calculateAverage('Communication Skills', evaluations),
+            Teamwork: calculateAverage('Teamwork', evaluations),
+            Punctuality: calculateAverage('Punctuality', evaluations),
+            Initiative: calculateAverage('Initiative', evaluations)
+        };
+
+        const adminId = document.getElementById('a_id').value;
+        const department = document.getElementById('department').value;
+
+        $.ajax({
+            type: 'POST',
+            url: '../db/submit_evaluation.php',
+            data: {
+                e_id: currentEmployeeId,
+                employeeName: currentEmployeeName,
+                employeePosition: currentEmployeePosition,
+                categoryAverages: JSON.stringify(categoryAverages),
+                adminId: adminId,
+                department: department
+            },
+            success: function (response) {
+                console.log(response);
+                if (response === 'You have already evaluated this employee.') {
+                    showStatusModal(response);
+                } else {
+                    $('#evaluationModal').modal('hide');
+                    showStatusModal('Evaluation submitted successfully!');
+                }
+            },
+            error: function (err) {
+                console.error(err);
+                showStatusModal('An error occurred while submitting the evaluation.');
+            }
+        });
+    }
+
+    function calculateAverage(category, evaluations) {
+        const categoryEvaluations = evaluations.filter(evaluation => evaluation.question.startsWith(category.replace(/\s/g, '')));
+
+        if (categoryEvaluations.length === 0) {
+            return 0;
+        }
+
+        const total = categoryEvaluations.reduce((sum, evaluation) => sum + parseInt(evaluation.rating), 0);
+        return total / categoryEvaluations.length;
+    }
+
+    function showStatusModal(message) {
+        const statusModal = new bootstrap.Modal(document.getElementById('statusModal'));
+        document.querySelector('#statusModal .modal-body').innerHTML = `<p>${message}</p>`;
+        statusModal.show();
+        setTimeout(() => {
+            statusModal.hide();
+        }, 2000);
+    }
+
+    // Add event listener to the close button to remove the border
+    document.addEventListener('DOMContentLoaded', function () {
+        const closeButtons = document.querySelectorAll('.btn-close-white');
+        closeButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                this.style.border = 'none';
+            });
+        });
+    });
 </script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'> </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
@@ -677,3 +814,956 @@ $itData = getAdminEvaluationProgress($conn, 'IT Department', $adminId);
     <script src="../js/admin.js"></script>
 </body>
 </html>
+
+<!-- Modal for Sales Department -->
+<div class="modal fade" id="salesModal" tabindex="-1" aria-labelledby="salesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title" id="salesModalLabel">Sales Department</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <?php if ($evaluationPeriod): ?>
+                        <div>
+                            <strong>Evaluation Period:</strong> <?php echo $evaluationPeriod; ?>
+                            <br>
+                            <strong>Evaluation End Date:</strong> <?php echo $evaluationEndDate; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning" role="alert">
+                            Evaluations are currently closed.
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php
+                // Include the database connection
+                include '../db/db_conn.php';
+
+                // Define the values for role and department
+                $role = 'employee';
+                $department = 'Sales Department';
+
+                // Fetch employee records where role is 'employee' and department is 'Sales Department'
+                $sql = "SELECT e_id, firstname, lastname, role, position FROM employee_register WHERE role = ? AND department = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('ss', $role, $department);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                // Fetch evaluations for this admin
+                $adminId = $_SESSION['a_id'];
+                $evaluatedEmployees = [];
+                $evalSql = "SELECT e_id FROM admin_evaluations WHERE a_id = ?";
+                $evalStmt = $conn->prepare($evalSql);
+                $evalStmt->bind_param('i', $adminId);
+                $evalStmt->execute();
+                $evalResult = $evalStmt->get_result();
+                if ($evalResult->num_rows > 0) {
+                    while ($row = $evalResult->fetch_assoc()) {
+                        $evaluatedEmployees[] = $row['e_id'];
+                    }
+                }
+
+                // Fetch evaluation questions from the database for each category
+                $categories = ['Quality of Work', 'Communication Skills', 'Teamwork', 'Punctuality', 'Initiative'];
+                $questions = [];
+
+                foreach ($categories as $category) {
+                    $categorySql = "SELECT question FROM evaluation_questions WHERE category = ?";
+                    $categoryStmt = $conn->prepare($categorySql);
+                    $categoryStmt->bind_param('s', $category);
+                    $categoryStmt->execute();
+                    $categoryResult = $categoryStmt->get_result();
+                    $questions[$category] = [];
+
+                    if ($categoryResult->num_rows > 0) {
+                        while ($row = $categoryResult->fetch_assoc()) {
+                            $questions[$category][] = $row['question'];
+                        }
+                    }
+                }
+
+                // Check if any records are found
+                $employees = [];
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        $employees[] = $row;
+                    }
+                }
+
+                // Close the database connection
+                $conn->close();
+                ?>
+
+                <div class="container mt-5">
+                    <h2 class="text-center text-primary mb-4">Sales Department Evaluation</h2>
+
+                    <!-- Employee Evaluation Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover text-dark">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Role</th>
+                                    <th>Evaluation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($employees)): ?>
+                                    <?php foreach ($employees as $employee): ?>
+                                        <tr>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['position']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['role']); ?></td>
+                                            <td>
+                                                <button class="btn btn-success"
+                                                    onclick="evaluateEmployee(<?php echo $employee['e_id']; ?>, '<?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?>', '<?php echo htmlspecialchars($employee['position']); ?>', 'Sales Department')"
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'disabled' : ''; ?>>
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'Evaluated' : 'Evaluate'; ?>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td class="text-light text-center" colspan="4">No employees found for evaluation in Sales Department.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn border-secondary text-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal for Administration Department -->
+<div class="modal fade" id="administrationModal" tabindex="-1" aria-labelledby="administrationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title" id="administrationModalLabel">Administration Department</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <?php if ($evaluationPeriod): ?>
+                        <div class="alert alert-info" role="alert">
+                            <strong>Evaluation Period:</strong> <?php echo $evaluationPeriod; ?>
+                            <br>
+                            <strong>Evaluation End Date:</strong> <?php echo $evaluationEndDate; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning" role="alert">
+                            Evaluations are currently closed.
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php
+                // Include the database connection
+                include '../db/db_conn.php';
+
+                // Define the values for role and department
+                $role = 'employee';
+                $department = 'Administration Department';
+
+                // Fetch employee records where role is 'employee' and department is 'Administration Department'
+                $sql = "SELECT e_id, firstname, lastname, role, position FROM employee_register WHERE role = ? AND department = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('ss', $role, $department);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                // Fetch evaluations for this admin
+                $adminId = $_SESSION['a_id'];
+                $evaluatedEmployees = [];
+                $evalSql = "SELECT e_id FROM admin_evaluations WHERE a_id = ?";
+                $evalStmt = $conn->prepare($evalSql);
+                $evalStmt->bind_param('i', $adminId);
+                $evalStmt->execute();
+                $evalResult = $evalStmt->get_result();
+                if ($evalResult->num_rows > 0) {
+                    while ($row = $evalResult->fetch_assoc()) {
+                        $evaluatedEmployees[] = $row['e_id'];
+                    }
+                }
+
+                // Fetch evaluation questions from the database for each category
+                $categories = ['Quality of Work', 'Communication Skills', 'Teamwork', 'Punctuality', 'Initiative'];
+                $questions = [];
+
+                foreach ($categories as $category) {
+                    $categorySql = "SELECT question FROM evaluation_questions WHERE category = ?";
+                    $categoryStmt = $conn->prepare($categorySql);
+                    $categoryStmt->bind_param('s', $category);
+                    $categoryStmt->execute();
+                    $categoryResult = $categoryStmt->get_result();
+                    $questions[$category] = [];
+
+                    if ($categoryResult->num_rows > 0) {
+                        while ($row = $categoryResult->fetch_assoc()) {
+                            $questions[$category][] = $row['question'];
+                        }
+                    }
+                }
+
+                // Check if any records are found
+                $employees = [];
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        $employees[] = $row;
+                    }
+                }
+
+                // Close the database connection
+                $conn->close();
+                ?>
+
+                <div class="container mt-5">
+                    <h2 class="text-center text-primary mb-4">Administration Department Evaluation</h2>
+
+                    <!-- Employee Evaluation Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover text-dark">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Role</th>
+                                    <th>Evaluation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($employees)): ?>
+                                    <?php foreach ($employees as $employee): ?>
+                                        <tr>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['position']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['role']); ?></td>
+                                            <td>
+                                                <button class="btn btn-success"
+                                                    onclick="evaluateEmployee(<?php echo $employee['e_id']; ?>, '<?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?>', '<?php echo htmlspecialchars($employee['position']); ?>', 'Administration Department')"
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'disabled' : ''; ?>>
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'Evaluated' : 'Evaluate'; ?>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td class="text-light text-center" colspan="4">No employees found for evaluation in Administration Department.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn border-secondary text-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Finance Department -->
+<div class="modal fade" id="financeModal" tabindex="-1" aria-labelledby="financeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title" id="financeModalLabel">Finance Department</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <?php if ($evaluationPeriod): ?>
+                        <div class="alert alert-info" role="alert">
+                            <strong>Evaluation Period:</strong> <?php echo $evaluationPeriod; ?>
+                            <br>
+                            <strong>Evaluation End Date:</strong> <?php echo $evaluationEndDate; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning" role="alert">
+                            Evaluations are currently closed.
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php
+                // Include the database connection
+                include '../db/db_conn.php';
+
+                // Define the values for role and department
+                $role = 'employee';
+                $department = 'Finance Department';
+
+                // Fetch employee records where role is 'employee' and department is 'Finance Department'
+                $sql = "SELECT e_id, firstname, lastname, role, position FROM employee_register WHERE role = ? AND department = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('ss', $role, $department);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                // Fetch evaluations for this admin
+                $adminId = $_SESSION['a_id'];
+                $evaluatedEmployees = [];
+                $evalSql = "SELECT e_id FROM admin_evaluations WHERE a_id = ?";
+                $evalStmt = $conn->prepare($evalSql);
+                $evalStmt->bind_param('i', $adminId);
+                $evalStmt->execute();
+                $evalResult = $evalStmt->get_result();
+                if ($evalResult->num_rows > 0) {
+                    while ($row = $evalResult->fetch_assoc()) {
+                        $evaluatedEmployees[] = $row['e_id'];
+                    }
+                }
+
+                // Fetch evaluation questions from the database for each category
+                $categories = ['Quality of Work', 'Communication Skills', 'Teamwork', 'Punctuality', 'Initiative'];
+                $questions = [];
+
+                foreach ($categories as $category) {
+                    $categorySql = "SELECT question FROM evaluation_questions WHERE category = ?";
+                    $categoryStmt = $conn->prepare($categorySql);
+                    $categoryStmt->bind_param('s', $category);
+                    $categoryStmt->execute();
+                    $categoryResult = $categoryStmt->get_result();
+                    $questions[$category] = [];
+
+                    if ($categoryResult->num_rows > 0) {
+                        while ($row = $categoryResult->fetch_assoc()) {
+                            $questions[$category][] = $row['question'];
+                        }
+                    }
+                }
+
+                // Check if any records are found
+                $employees = [];
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        $employees[] = $row;
+                    }
+                }
+
+                // Close the database connection
+                $conn->close();
+                ?>
+
+                <div class="container mt-5">
+                    <h2 class="text-center text-primary mb-4">Finance Department Evaluation</h2>
+
+                    <!-- Employee Evaluation Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover text-dark">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Role</th>
+                                    <th>Evaluation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($employees)): ?>
+                                    <?php foreach ($employees as $employee): ?>
+                                        <tr>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['position']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['role']); ?></td>
+                                            <td>
+                                                <button class="btn btn-success"
+                                                    onclick="evaluateEmployee(<?php echo $employee['e_id']; ?>, '<?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?>', '<?php echo htmlspecialchars($employee['position']); ?>', 'Finance Department')"
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'disabled' : ''; ?>>
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'Evaluated' : 'Evaluate'; ?>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td class="text-light text-center" colspan="4">No employees found for evaluation in Finance Department.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn border-secondary text-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal for Human Resource Department -->
+<div class="modal fade" id="hrModal" tabindex="-1" aria-labelledby="hrModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title" id="hrModalLabel">Human Resource Department</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <?php if ($evaluationPeriod): ?>
+                        <div class="alert alert-info" role="alert">
+                            <strong>Evaluation Period:</strong> <?php echo $evaluationPeriod; ?>
+                            <br>
+                            <strong>Evaluation End Date:</strong> <?php echo $evaluationEndDate; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning" role="alert">
+                            Evaluations are currently closed.
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php
+                // Include the database connection
+                include '../db/db_conn.php';
+
+                // Define the values for role and department
+                $role = 'employee';
+                $department = 'Human Resource Department';
+
+                // Fetch employee records where role is 'employee' and department is 'Human Resource Department'
+                $sql = "SELECT e_id, firstname, lastname, role, position FROM employee_register WHERE role = ? AND department = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('ss', $role, $department);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                // Fetch evaluations for this admin
+                $adminId = $_SESSION['a_id'];
+                $evaluatedEmployees = [];
+                $evalSql = "SELECT e_id FROM admin_evaluations WHERE a_id = ?";
+                $evalStmt = $conn->prepare($evalSql);
+                $evalStmt->bind_param('i', $adminId);
+                $evalStmt->execute();
+                $evalResult = $evalStmt->get_result();
+                if ($evalResult->num_rows > 0) {
+                    while ($row = $evalResult->fetch_assoc()) {
+                        $evaluatedEmployees[] = $row['e_id'];
+                    }
+                }
+
+                // Fetch evaluation questions from the database for each category
+                $categories = ['Quality of Work', 'Communication Skills', 'Teamwork', 'Punctuality', 'Initiative'];
+                $questions = [];
+
+                foreach ($categories as $category) {
+                    $categorySql = "SELECT question FROM evaluation_questions WHERE category = ?";
+                    $categoryStmt = $conn->prepare($categorySql);
+                    $categoryStmt->bind_param('s', $category);
+                    $categoryStmt->execute();
+                    $categoryResult = $categoryStmt->get_result();
+                    $questions[$category] = [];
+
+                    if ($categoryResult->num_rows > 0) {
+                        while ($row = $categoryResult->fetch_assoc()) {
+                            $questions[$category][] = $row['question'];
+                        }
+                    }
+                }
+
+                // Check if any records are found
+                $employees = [];
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        $employees[] = $row;
+                    }
+                }
+
+                // Close the database connection
+                $conn->close();
+                ?>
+
+                <div class="container mt-5">
+                    <h2 class="text-center text-primary mb-4">Human Resource Department Evaluation</h2>
+
+                    <!-- Employee Evaluation Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover text-dark">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Role</th>
+                                    <th>Evaluation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($employees)): ?>
+                                    <?php foreach ($employees as $employee): ?>
+                                        <tr>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['position']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['role']); ?></td>
+                                            <td>
+                                                <button class="btn btn-success"
+                                                    onclick="evaluateEmployee(<?php echo $employee['e_id']; ?>, '<?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?>', '<?php echo htmlspecialchars($employee['position']); ?>', 'Human Resource Department')"
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'disabled' : ''; ?>>
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'Evaluated' : 'Evaluate'; ?>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td class="text-light text-center" colspan="4">No employees found for evaluation in Human Resource Department.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn border-secondary text-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal for Credit Department -->
+<div class="modal fade" id="creditModal" tabindex="-1" aria-labelledby="creditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title" id="creditModalLabel">Credit Department</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <?php if ($evaluationPeriod): ?>
+                        <div class="alert alert-info" role="alert">
+                            <strong>Evaluation Period:</strong> <?php echo $evaluationPeriod; ?>
+                            <br>
+                            <strong>Evaluation End Date:</strong> <?php echo $evaluationEndDate; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning" role="alert">
+                            Evaluations are currently closed.
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php
+                // Include the database connection
+                include '../db/db_conn.php';
+
+                // Define the values for role and department
+                $role = 'employee';
+                $department = 'Credit Department';
+
+                // Fetch employee records where role is 'employee' and department is 'Credit Department'
+                $sql = "SELECT e_id, firstname, lastname, role, position FROM employee_register WHERE role = ? AND department = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('ss', $role, $department);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                // Fetch evaluations for this admin
+                $adminId = $_SESSION['a_id'];
+                $evaluatedEmployees = [];
+                $evalSql = "SELECT e_id FROM admin_evaluations WHERE a_id = ?";
+                $evalStmt = $conn->prepare($evalSql);
+                $evalStmt->bind_param('i', $adminId);
+                $evalStmt->execute();
+                $evalResult = $evalStmt->get_result();
+                if ($evalResult->num_rows > 0) {
+                    while ($row = $evalResult->fetch_assoc()) {
+                        $evaluatedEmployees[] = $row['e_id'];
+                    }
+                }
+
+                // Fetch evaluation questions from the database for each category
+                $categories = ['Quality of Work', 'Communication Skills', 'Teamwork', 'Punctuality', 'Initiative'];
+                $questions = [];
+
+                foreach ($categories as $category) {
+                    $categorySql = "SELECT question FROM evaluation_questions WHERE category = ?";
+                    $categoryStmt = $conn->prepare($categorySql);
+                    $categoryStmt->bind_param('s', $category);
+                    $categoryStmt->execute();
+                    $categoryResult = $categoryStmt->get_result();
+                    $questions[$category] = [];
+
+                    if ($categoryResult->num_rows > 0) {
+                        while ($row = $categoryResult->fetch_assoc()) {
+                            $questions[$category][] = $row['question'];
+                        }
+                    }
+                }
+
+                // Check if any records are found
+                $employees = [];
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        $employees[] = $row;
+                    }
+                }
+
+                // Close the database connection
+                $conn->close();
+                ?>
+
+                <div class="container mt-5">
+                    <h2 class="text-center text-primary mb-4">Credit Department Evaluation</h2>
+
+                    <!-- Employee Evaluation Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover text-dark">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Role</th>
+                                    <th>Evaluation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($employees)): ?>
+                                    <?php foreach ($employees as $employee): ?>
+                                        <tr>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['position']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['role']); ?></td>
+                                            <td>
+                                                <button class="btn btn-success"
+                                                    onclick="evaluateEmployee(<?php echo $employee['e_id']; ?>, '<?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?>', '<?php echo htmlspecialchars($employee['position']); ?>', 'Credit Department')"
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'disabled' : ''; ?>>
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'Evaluated' : 'Evaluate'; ?>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td class="text-light text-center" colspan="4">No employees found for evaluation in Credit Department.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn border-secondary text-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal for IT Department -->
+<div class="modal fade" id="itModal" tabindex="-1" aria-labelledby="itModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title" id="itModalLabel">IT Department</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <?php if ($evaluationPeriod): ?>
+                        <div class="alert alert-info" role="alert">
+                            <strong>Evaluation Period:</strong> <?php echo $evaluationPeriod; ?>
+                            <br>
+                            <strong>Evaluation End Date:</strong> <?php echo $evaluationEndDate; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-warning" role="alert">
+                            Evaluations are currently closed.
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php
+                // Include the database connection
+                include '../db/db_conn.php';
+
+                // Define the values for role and department
+                $role = 'employee';
+                $department = 'IT Department';
+
+                // Fetch employee records where role is 'employee' and department is 'IT Department'
+                $sql = "SELECT e_id, firstname, lastname, role, position FROM employee_register WHERE role = ? AND department = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('ss', $role, $department);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                // Fetch evaluations for this admin
+                $adminId = $_SESSION['a_id'];
+                $evaluatedEmployees = [];
+                $evalSql = "SELECT e_id FROM admin_evaluations WHERE a_id = ?";
+                $evalStmt = $conn->prepare($evalSql);
+                $evalStmt->bind_param('i', $adminId);
+                $evalStmt->execute();
+                $evalResult = $evalStmt->get_result();
+                if ($evalResult->num_rows > 0) {
+                    while ($row = $evalResult->fetch_assoc()) {
+                        $evaluatedEmployees[] = $row['e_id'];
+                    }
+                }
+
+                // Fetch evaluation questions from the database for each category
+                $categories = ['Quality of Work', 'Communication Skills', 'Teamwork', 'Punctuality', 'Initiative'];
+                $questions = [];
+
+                foreach ($categories as $category) {
+                    $categorySql = "SELECT question FROM evaluation_questions WHERE category = ?";
+                    $categoryStmt = $conn->prepare($categorySql);
+                    $categoryStmt->bind_param('s', $category);
+                    $categoryStmt->execute();
+                    $categoryResult = $categoryStmt->get_result();
+                    $questions[$category] = [];
+
+                    if ($categoryResult->num_rows > 0) {
+                        while ($row = $categoryResult->fetch_assoc()) {
+                            $questions[$category][] = $row['question'];
+                        }
+                    }
+                }
+
+                // Check if any records are found
+                $employees = [];
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        $employees[] = $row;
+                    }
+                }
+
+                // Close the database connection
+                $conn->close();
+                ?>
+
+                <div class="container mt-5">
+                    <h2 class="text-center text-primary mb-4">IT Department Evaluation</h2>
+
+                    <!-- Employee Evaluation Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover text-dark">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Position</th>
+                                    <th>Role</th>
+                                    <th>Evaluation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($employees)): ?>
+                                    <?php foreach ($employees as $employee): ?>
+                                        <tr>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['position']); ?></td>
+                                            <td class="text-light"><?php echo htmlspecialchars($employee['role']); ?></td>
+                                            <td>
+                                                <button class="btn btn-success"
+                                                    onclick="evaluateEmployee(<?php echo $employee['e_id']; ?>, '<?php echo htmlspecialchars($employee['firstname'] . ' ' . $employee['lastname']); ?>', '<?php echo htmlspecialchars($employee['position']); ?>', 'IT Department')"
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'disabled' : ''; ?>>
+                                                    <?php echo in_array($employee['e_id'], $evaluatedEmployees) ? 'Evaluated' : 'Evaluate'; ?>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td class="text-light text-center" colspan="4">No employees found for evaluation in IT Department.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn border-secondary text-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shared Evaluation Modal -->
+<div class="modal fade" id="evaluationModal" tabindex="-1" role="dialog" aria-labelledby="evaluationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="employeeDetails"></h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="a_id" value="<?php echo $_SESSION['a_id']; ?>">
+                <input type="hidden" id="department" value="">
+                <div class="text-dark" id="questions"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="submitEvaluation()">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusModalLabel">
+                    <i class="fa fa-info-circle text-light me-2 fs-4"></i> Message
+                </h5>
+                <button type="button" class="btn-close text-light" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body align-items-center">
+                <!-- Status message will be inserted here -->
+                <div class="d-flex justify-content-center mt-3">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let currentEmployeeId;
+    let currentEmployeeName;  
+    let currentEmployeePosition; 
+
+    // The categories and questions fetched from the PHP script
+    const questions = <?php echo json_encode($questions); ?>;
+
+    function evaluateEmployee(e_id, employeeName, employeePosition, department) {
+        currentEmployeeId = e_id; 
+        currentEmployeeName = employeeName; 
+        currentEmployeePosition = employeePosition; 
+
+        const employeeDetails = `<strong>Name: ${employeeName} <br> Position: ${employeePosition}</strong>`;
+        document.getElementById('employeeDetails').innerHTML = employeeDetails;
+        document.getElementById('department').value = department;
+
+        const questionsDiv = document.getElementById('questions');
+        questionsDiv.innerHTML = ''; 
+
+        // Start the table structure
+        let tableHtml = `
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Question</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        // Loop through categories and questions to add them into the table
+        for (const [category, categoryQuestions] of Object.entries(questions)) {
+            categoryQuestions.forEach((question, index) => {
+                const questionName = `${category.replace(/\s/g, '')}q${index}`; // Unique name per question
+                tableHtml += `
+                <tr>
+                    <td>${index === 0 ? category : ''}</td>
+                    <td>${question}</td>
+                    <td>
+                        <div class="star-rating">
+                            ${[6, 5, 4, 3, 2, 1].map(value => `
+                                <input type="radio" name="${questionName}" value="${value}" id="${questionName}star${value}">
+                                <label for="${questionName}star${value}">&#9733;</label>
+                            `).join('')}
+                        </div>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        // Close the table structure
+        tableHtml += `
+            </tbody>
+        </table>`;
+
+        questionsDiv.innerHTML = tableHtml;
+
+        $('#evaluationModal').modal('show'); 
+    }
+
+    function submitEvaluation() {
+        const evaluations = [];
+        const questionsDiv = document.getElementById('questions');
+
+        questionsDiv.querySelectorAll('input[type="radio"]:checked').forEach(input => {
+            evaluations.push({
+                question: input.name,  
+                rating: input.value    
+            });
+        });
+
+        const totalQuestions = questionsDiv.querySelectorAll('.star-rating').length;
+
+        if (evaluations.length !== totalQuestions) {
+            showStatusModal('Please complete the evaluation before submitting.');
+            return;
+        }
+
+        const categoryAverages = {
+            QualityOfWork: calculateAverage('Quality of Work', evaluations),
+            CommunicationSkills: calculateAverage('Communication Skills', evaluations),
+            Teamwork: calculateAverage('Teamwork', evaluations),
+            Punctuality: calculateAverage('Punctuality', evaluations),
+            Initiative: calculateAverage('Initiative', evaluations)
+        };
+
+        const adminId = document.getElementById('a_id').value;
+        const department = document.getElementById('department').value;
+
+        $.ajax({
+            type: 'POST',
+            url: '../db/submit_evaluation.php',
+            data: {
+                e_id: currentEmployeeId,
+                employeeName: currentEmployeeName,
+                employeePosition: currentEmployeePosition,
+                categoryAverages: JSON.stringify(categoryAverages),
+                adminId: adminId,
+                department: department  
+            },
+            success: function (response) {
+                console.log(response); 
+                if (response === 'You have already evaluated this employee.') {
+                    showStatusModal(response); 
+                } else {
+                    $('#evaluationModal').modal('hide');
+                    showStatusModal('Evaluation submitted successfully!');
+                }
+            },
+            error: function (err) {
+                console.error(err);
+                showStatusModal('An error occurred while submitting the evaluation.');
+            }
+        });
+    }
+
+    function calculateAverage(category, evaluations) {
+        const categoryEvaluations = evaluations.filter(evaluation => evaluation.question.startsWith(category.replace(/\s/g, '')));
+
+        if (categoryEvaluations.length === 0) {
+            return 0; 
+        }
+
+        const total = categoryEvaluations.reduce((sum, evaluation) => sum + parseInt(evaluation.rating), 0);
+        return total / categoryEvaluations.length;
+    }
+
+    function showStatusModal(message) {
+        const statusModal = new bootstrap.Modal(document.getElementById('statusModal'));
+        document.querySelector('#statusModal .modal-body').innerHTML = `<p>${message}</p>`;
+        statusModal.show();
+        setTimeout(() => {
+            statusModal.hide();
+        }, 2000);
+    }
+
+</script>
+``` 

@@ -1,0 +1,4 @@
+[03-Mar-2025 22:01:30 Europe/Berlin] PHP Fatal error:  Uncaught Error: Call to a member function bind_param() on bool in C:\xampp\htdocs\hr2\db\submit_evaluation.php:64
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\hr2\db\submit_evaluation.php on line 64

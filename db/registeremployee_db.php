@@ -77,7 +77,7 @@ if (empty($faceDescriptor)) {
 }
 
 // Decode the face descriptor string into an array
-$faceDescriptorArray = json_decode($faceDescriptor);  // Move json_decode to variable first
+$faceDescriptorArray = json_decode($faceDescriptor, true);  // Ensure it is an array
 
 // Handle multiple photo uploads (maximum 3 images)
 $uploadedPhotos = [];
@@ -88,7 +88,6 @@ if (isset($_FILES['photo']) && count($_FILES['photo']['name']) > 0) {
     // Ensure the target directory exists, if not create it
     if (!file_exists($targetDirectory)) {
         mkdir($targetDirectory, 0755, true);  // Create folder with permissions
-        echo "Folder created successfully.<br>";
     }
 
     // Loop through all uploaded files
@@ -97,9 +96,6 @@ if (isset($_FILES['photo']) && count($_FILES['photo']['name']) > 0) {
             $photoTmpName = $_FILES['photo']['tmp_name'][$i];
             $photoName = $_FILES['photo']['name'][$i];
             $targetFilePath = $targetDirectory . basename($photoName);
-
-            // Debugging: Check the target file path
-            echo "Target file path: " . $targetFilePath . "<br>";
 
             // Validate the file type (image/jpeg, image/png, etc.)
             $allowedFileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -113,7 +109,6 @@ if (isset($_FILES['photo']) && count($_FILES['photo']['name']) > 0) {
                 // Move the uploaded file to the uploads folder
                 if (move_uploaded_file($photoTmpName, $targetFilePath)) {
                     $uploadedPhotos[] = $targetFilePath;
-                    echo "File uploaded successfully: " . $targetFilePath . "<br>";
                 } else {
                     echo "<script>alert('Error uploading the image. Please try again.'); window.history.back();</script>";
                     exit();
@@ -131,20 +126,26 @@ if (isset($_FILES['photo']) && count($_FILES['photo']['name']) > 0) {
     $uploadedPhotos = []; // No files uploaded
 }
 
-
 // Insert employee data into the database, with the photos stored as a JSON array
 $insertQuery = "INSERT INTO employee_register (e_id, firstname, lastname, email, password, role, gender, department, position, face_descriptor, face_image) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 $stmt = $conn->prepare($insertQuery);
 
-// Prepare the face descriptor array (if any)
-$faceDescriptorArray = json_decode($faceDescriptor ?? '[]');  // Fix here, ensure it is assigned before
-
 // Bind the parameters and execute
 $stmt->bind_param("issssssssss", $employeeId, $firstname, $lastname, $email, $hashed_password, $role, $gender, $department, $position, json_encode($faceDescriptorArray), json_encode($uploadedPhotos));
 
 if ($stmt->execute()) {
+    // Get the ID of the newly created employee
+    $newEmployeeId = $stmt->insert_id;
+
+    // Insert notification for the user
+    $notificationMessage = "A new employee account has been created for $firstname $lastname.";
+    $notificationSql = "INSERT INTO notifications (user_id, message, is_read) VALUES (?, ?, 0)";
+    $notificationStmt = $conn->prepare($notificationSql);
+    $notificationStmt->bind_param("is", $newEmployeeId, $notificationMessage);
+    $notificationStmt->execute();
+
     // Get admin ID from session (ensure this session value is set when admin logs in)
     $admin_id = $_SESSION['a_id'];  // Make sure session contains this value
 

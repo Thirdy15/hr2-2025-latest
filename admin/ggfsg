@@ -1,0 +1,37 @@
+<?php
+session_start();
+header('Content-Type: application/json');
+
+if (!isset($_SESSION['a_id'])) {
+    die(json_encode(['success' => false, 'error' => 'Unauthorized']));
+}
+
+include '../db/db_conn.php';
+
+$data = json_decode(file_get_contents('php://input'), true);
+
+try {
+    $conn->begin_transaction();
+    
+    // Insert evaluation record
+    $stmt = $conn->prepare("INSERT INTO admin_evaluations 
+                          (a_id, e_id, department, employee_name, employee_position, evaluation_date, scores)
+                          VALUES (?, ?, ?, ?, ?, NOW(), ?)");
+    $stmt->bind_param("iissss",
+        $_SESSION['a_id'],
+        $data['e_id'],
+        $data['department'],
+        $data['employeeName'],
+        $data['employeePosition'],
+        json_encode($data['scores'])
+    );
+    $stmt->execute();
+    
+    $conn->commit();
+    echo json_encode(['success' => true, 'message' => 'Evaluation submitted successfully']);
+} catch (Exception $e) {
+    $conn->rollback();
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Database error: '.$e->getMessage()]);
+}
+?>

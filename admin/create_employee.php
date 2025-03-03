@@ -369,7 +369,7 @@ document.getElementById('captureFaceBtn').addEventListener('click', () => {
         formFeedback.innerText = message;
     }
 
-    // Function to notify admin
+   // Function to notify admin
     async function notifyAdmin() {
         try {
             const response = await fetch('../db/notify_admin.php', {
@@ -391,6 +391,38 @@ document.getElementById('captureFaceBtn').addEventListener('click', () => {
 
     // Attach event listener to form
     document.getElementById('registrationForm').addEventListener('submit', handleFormSubmit);
+
+    // Function to handle form submission
+    async function handleFormSubmit(event) {
+        event.preventDefault();
+
+        // Validate form fields
+        const form = event.target;
+        const formData = new FormData(form);
+
+        // Perform any additional validation if needed
+
+        // Submit the form data to the server
+        try {
+            const response = await fetch(form.action, {
+                method: form.method,
+                body: formData
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showNotification('Employee account created successfully!', 'success');
+                notifyAdmin(); // Notify admin after successful account creation
+                notify('employee'); // Call notify function to update notifications
+                onEmployeeAccountCreated(); // Call the function to notify about the new employee account creation
+            } else {
+                showNotification(result.message, 'danger');
+            }
+        } catch (error) {
+            showNotification('An error occurred while creating the account.', 'danger');
+            console.error('Form submission error:', error);
+        }
+    }
     </script>
 </body>
 
